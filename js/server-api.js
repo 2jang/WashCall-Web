@@ -12,7 +12,9 @@ function getAuthToken() {
 // fetch API 요청에 필요한 옵션을 구성하는 헬퍼 함수 (토큰 포함)
 function getFetchOptions(method, body = null, isFormData = false) {
     const token = getAuthToken();
-    const headers = {};
+    const headers = {
+        'ngrok-skip-browser-warning': 'true'  // ngrok 경고 페이지 우회
+    };
 
     if (!isFormData) {
         headers['Content-Type'] = 'application/json';
@@ -115,7 +117,8 @@ const api = {
             const response = await fetch(`${API_BASE_URL}/token`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'ngrok-skip-browser-warning': 'true'  // ngrok 경고 페이지 우회
                 },
                 body: formData.toString()
             });
