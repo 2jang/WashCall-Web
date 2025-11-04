@@ -128,9 +128,9 @@ const api = {
             fcm_token: "TEMP_TOKEN_ON_LOGIN"  
         };
 
-        try {
+        try { 
             // ❗️ 2. [수정] 엔드포인트 /token -> /login
-            // ❗️ 3. [수정] getFetchOptions를 사용하여 JSON으로 전송 (x-www-form-urlencoded 제거)
+            // ❗️   3. [수정] getFetchOptions를 사용하여 JSON으로 전송 (x-www-form-urlencoded 제거)
             const response = await fetch(`${API_BASE_URL}/login`, getFetchOptions('POST', payload));
 
             if (!response.ok) {
