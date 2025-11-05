@@ -1,6 +1,6 @@
 // js/main.js
 // ❗️ ('일회성 알림' + '코스 타이머' + '버튼 비활성화' + '5초 재연결' + '개별 토글 팝업'
-// ❗️ + '신중한 업데이트(서버 응답 대기)' 최종본)
+// ❗️ + '신중한 업데이트' + '클릭 시 모든 버튼 비활성화' 최종본)
 
 let connectionStatusElement;
 
@@ -138,19 +138,16 @@ function updateMachineCard(machineId, newStatus, newTimer = null) {
         }
     }
 
-    // --- [핵심] 버튼 활성화/비활성화 로직 ---
     const courseButtons = card.querySelectorAll('.course-btn');
-    // newStatus가 'FINISHED'이거나 'OFF'이면 false가 됨
     const shouldBeDisabled = (newStatus === 'WASHING' || newStatus === 'SPINNING');
     
     courseButtons.forEach(btn => {
-        // 'FINISHED'일 때 btn.disabled = false가 실행됨
         btn.disabled = shouldBeDisabled;
-        if (!shouldBeDisabled && btn.textContent === "요청 중...") {
-            btn.textContent = btn.dataset.courseName; 
+        // ❗️ 'FINISHED' 또는 'OFF'가 되어 활성화될 때
+        if (!shouldBeDisabled) {
+            btn.textContent = btn.dataset.courseName; // 텍스트를 "요청 중..."에서 원래 코스 이름으로 복구
         }
     });
-    // --- [핵심] 끝 ---
 }
 
 // [수정 없음] renderMachines (새로고침 시 타이머 로드 로직 포함)
@@ -209,24 +206,39 @@ function renderMachines(machines) {
         container.appendChild(machineDiv);
     });
 
-    addCourseButtonLogic();
+    addCourseButtonLogic(); // ❗️ 수정된 함수가 연결됨
     addNotifyMeLogic();
 }
 
-// [수정 없음] 코스 버튼 로직 (신중한 업데이트 - 서버 응답 대기)
+/**
+ * ❗️ [핵심 수정] 코스 버튼 로직 (클릭 즉시 모든 버튼 비활성화)
+ */
 function addCourseButtonLogic() {
-    document.querySelectorAll('.course-btn').forEach(btn => {
-        btn.onclick = async (event) => { 
-            const machineId = parseInt(event.target.dataset.machineId, 10);
-            const courseName = event.target.dataset.courseName;
+    document.querySelectorAll('.course-btn').forEach(clickedBtn => {
+        clickedBtn.onclick = async (event) => { 
+            const machineId = parseInt(clickedBtn.dataset.machineId, 10);
+            const courseName = clickedBtn.dataset.courseName;
             
-            btn.disabled = true;
-            btn.textContent = "요청 중...";
+            // 1. ❗️ [신규] 카드의 모든 버튼을 찾음
+            const card = document.getElementById(`machine-${machineId}`);
+            if (!card) return;
+            const allButtonsOnCard = card.querySelectorAll('.course-btn');
+
+            // 2. ❗️ [신규] 모든 버튼을 비활성화하고, 클릭한 버튼 텍스트 변경
+            allButtonsOnCard.forEach(btn => {
+                btn.disabled = true;
+                if (btn === clickedBtn) {
+                    btn.textContent = "요청 중...";
+                }
+            });
 
             try {
+                // 3. 서버에 /start_course API 호출
                 const result = await api.startCourse(machineId, courseName);
                 
+                // 4. (성공) 서버 응답으로 UI 업데이트
                 if (result && result.status && result.timer !== undefined) {
+                    // updateMachineCard가 'WASHING' 상태를 보고 버튼을 disabled로 유지함
                     updateMachineCard(machineId, result.status, result.timer);
                 } else {
                      throw new Error('서버 응답에 timer 또는 status 필드가 없습니다.');
@@ -238,8 +250,11 @@ function addCourseButtonLogic() {
                 console.error("API: 코스 시작 요청 실패:", error);
                 alert(`코스 시작 실패: ${error.message}`);
                 
-                btn.disabled = false;
-                btn.textContent = courseName; // 원래 텍스트로 복구
+                // 5. ❗️ (롤백) 실패 시, 모든 버튼을 다시 활성화
+                allButtonsOnCard.forEach(btn => {
+                    btn.disabled = false;
+                    btn.textContent = btn.dataset.courseName; // 원래 텍스트로 복구
+                });
             }
         };
     });
