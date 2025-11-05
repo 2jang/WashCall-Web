@@ -1,6 +1,6 @@
 // js/main.js
 // ❗️ ('일회성 알림' + '코스 타이머' + '버튼 비활성화' + '5초 재연결' + '개별 토글 팝업'
-// ❗️ + 'API 성공 시 즉시 WASHING으로 변경' 최종본)
+// ❗️ + 'API 호출 시 상태 변경 절대 안 함' 최종본)
 
 let connectionStatusElement;
 
@@ -201,7 +201,7 @@ function renderMachines(machines) {
 }
 
 /**
- * ❗️ [핵심 수정] 코스 버튼 로직 (API 성공 시 'WASHING'으로 간주)
+ * ❗️ [핵심 수정] 코스 버튼 로직 (API 호출만 하고 UI 상태 변경 안 함)
  */
 function addCourseButtonLogic() {
     document.querySelectorAll('.course-btn').forEach(clickedBtn => {
@@ -222,20 +222,24 @@ function addCourseButtonLogic() {
             });
 
             try {
-                // 2. 서버에 /start_course API 호출
+                // 2. 서버에 /start_course API 호출 (알려주기)
                 await api.startCourse(machineId, courseName);
                 
-                // 3. ❗️ [수정] 응답 내용(status)을 확인하지 않고,
-                //    호출이 성공했다는 것만으로 UI를 'WASHING'으로 업데이트
-                updateMachineCard(machineId, 'WASHING');
+                // 3. ❗️ [수정] UI 업데이트(updateMachineCard) 코드 '제거'
                 
-                console.log(`API: 코스 시작 요청 성공 (UI를 WASHING으로 변경)`);
+                console.log(`API: 코스 시작 요청 성공 (서버에 알림)`);
+                
+                // 4. [신규] 성공 시, UI는 'OFF' 상태이므로 버튼을 다시 활성화
+                allButtonsOnCard.forEach(btn => {
+                    btn.disabled = false;
+                    btn.textContent = btn.dataset.courseName; 
+                });
             
             } catch (error) {
                 console.error("API: 코스 시작 요청 실패:", error);
                 alert(`코스 시작 실패: ${error.message}`);
                 
-                // 4. (롤백) 실패 시, 모든 버튼을 다시 활성화
+                // 5. (롤백) 실패 시, 모든 버튼을 다시 활성화
                 allButtonsOnCard.forEach(btn => {
                     btn.disabled = false;
                     btn.textContent = btn.dataset.courseName; 
