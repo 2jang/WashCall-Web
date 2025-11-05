@@ -1,5 +1,5 @@
 // js/main.js
-// ❗️ ('일회성 알림' + '코스 타이머' + '버튼 비활성화' 로직이 모두 포함된 최종본)
+// ❗️ ('일회성 알림' + '코스 타이머' + '버튼 비활성화' + '5초 재연결' 로직이 모두 포함된 최종본)
 
 let connectionStatusElement;
 
@@ -11,25 +11,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function main() {
     console.log('WashCall WebApp 시작!');
-
     connectionStatusElement = document.getElementById('connection-status');
-    updateConnectionStatus('connecting');
-
+    
+    // 1. 초기 세탁기 목록 로드
     try {
+        updateConnectionStatus('connecting'); // (연결 시도 중... 표시)
         const machines = await api.getInitialMachines();
-        renderMachines(machines); // ❗️ 수정된 함수가 연결됨
+        renderMachines(machines);
 
-        api.connect(
-            () => updateConnectionStatus('success'),
-            (event) => handleSocketMessage(event), 
-            () => updateConnectionStatus('error')
-        );
+        // 2. ❗️ [수정] 최초 웹소켓 연결 시도
+        tryConnect();
 
     } catch (error) {
         console.error("초기 세탁기 목록 로드 실패:", error);
-        updateConnectionStatus('error');
+        updateConnectionStatus('error'); // (목록 로드 실패 시에도 '연결 끊김' 표시)
     }
 }
+
+/**
+ * ❗️ [신규] WebSocket 연결 및 재연결 로직
+ */
+function tryConnect() {
+    // 1. 'api.connect' 호출 시 3개의 콜백 함수를 전달
+    api.connect(
+        // 1A: (onOpen) 연결 성공 시
+        () => {
+            updateConnectionStatus('success');
+        },
+        
+        // 1B: (onMessage) 메시지 수신 시
+        (event) => {
+            handleSocketMessage(event);
+        },
+        
+        // 1C: (onError) 연결 실패 또는 끊김 시
+        () => {
+            // ❗️ UI 업데이트 (5초 후 재연결 시도... 텍스트 표시)
+            updateConnectionStatus('error');
+            
+            // ❗️ [핵심] 5초 후에 이 함수('tryConnect')를 다시 호출
+            setTimeout(() => {
+                console.log("WebSocket 재연결 시도...");
+                tryConnect();
+            }, 5000); // 5초
+        }
+    );
+}
+
 
 // [수정 없음] 연결 상태 UI
 function updateConnectionStatus(status) {
@@ -51,6 +79,7 @@ function updateConnectionStatus(status) {
             break;
         case 'error':
             connectionStatusElement.classList.add('error');
+            // ❗️ (텍스트 수정 없음. 이 텍스트가 정확했음)
             connectionStatusElement.textContent = '❌ 서버와의 연결이 끊어졌습니다. 5초 후 재연결 시도...';
             connectionStatusElement.style.opacity = 1;
             break;
@@ -58,14 +87,14 @@ function updateConnectionStatus(status) {
 }
 
 // [수정 없음] WebSocket 메시지 처리 (일회성 알림 로직 포함)
-async function handleSocketMessage(event) { 
+async function handleSocketMessage(event) {
     try {
         const message = JSON.parse(event.data); 
         const machineId = message.machine_id;
         const newStatus = message.status;
 
-        if (message.type === 'room_status') { 
-            updateMachineCard(machineId, newStatus, null); 
+        if (message.type === 'room_status') {
+            updateMachineCard(machineId, newStatus, null);
         } 
         else if (message.type === 'notify') {
             const msg = `세탁기 ${machineId} 상태 변경: ${translateStatus(newStatus)}`;
@@ -84,9 +113,9 @@ async function handleSocketMessage(event) {
 // [수정 없음] 토글 자동 끄기 헬퍼
 async function turnOffToggle(machineId) {
     const toggle = document.querySelector(`.notify-me-toggle[data-machine-id="${machineId}"]`);
-    if (toggle && toggle.checked) { 
+    if (toggle && toggle.checked) {
         console.log(`알림 완료: ${machineId}번 세탁기 토글을 자동으로 끕니다.`);
-        toggle.checked = false; 
+        toggle.checked = false;
         try {
             await api.toggleNotifyMe(machineId, false);
         } catch (error) {
@@ -96,24 +125,19 @@ async function turnOffToggle(machineId) {
 }
 
 
-/**
- * ❗️ [핵심 수정] updateMachineCard 함수가 버튼 비활성화 로직을 포함하도록 확장됨
- */
+// [수정 없음] updateMachineCard (버튼 비활성화 로직 포함)
 function updateMachineCard(machineId, newStatus, newTimer = null) {
     const card = document.getElementById(`machine-${machineId}`);
     if (!card) return; 
 
-    // 1. 카드 테두리 및 상태 클래스 업데이트
     card.className = 'machine-card'; 
     card.classList.add(`status-${newStatus.toLowerCase()}`);
 
-    // 2. 상태 텍스트 업데이트
     const statusStrong = card.querySelector('.status-display strong');
     if (statusStrong) {
         statusStrong.textContent = translateStatus(newStatus);
     }
 
-    // 3. 타이머 텍스트 업데이트 로직
     const timerSpan = card.querySelector('.timer-display span');
     if (timerSpan) {
         if (newTimer !== null && (newStatus === 'WASHING' || newStatus === 'SPINNING')) {
@@ -127,7 +151,6 @@ function updateMachineCard(machineId, newStatus, newTimer = null) {
         }
     }
 
-    // 4. ❗️ [신규 로직] 버튼 비활성화/활성화 처리
     const courseButtons = card.querySelectorAll('.course-btn');
     const shouldBeDisabled = (newStatus === 'WASHING' || newStatus === 'SPINNING');
     
@@ -136,9 +159,7 @@ function updateMachineCard(machineId, newStatus, newTimer = null) {
     });
 }
 
-/**
- * ❗️ [핵심 수정] 세탁기 리스트 렌더링 시 disabled 속성 초기화
- */
+// [수정 없음] renderMachines (버튼 비활성화 로직 포함)
 function renderMachines(machines) {
     const container = document.getElementById('machine-list-container');
     if (!container) return;
@@ -157,7 +178,6 @@ function renderMachines(machines) {
             displayTimerText = '세탁 완료!';
         }
 
-        // ❗️ [신규 로직] 초기 로드 시 버튼 비활성화를 위한 속성
         const isDisabled = (machine.status === 'WASHING' || machine.status === 'SPINNING');
         const disabledAttribute = isDisabled ? 'disabled' : '';
 
@@ -189,27 +209,22 @@ function renderMachines(machines) {
         container.appendChild(machineDiv);
     });
 
-    addCourseButtonLogic(); 
-    addNotifyMeLogic(); 
+    addCourseButtonLogic();
+    addNotifyMeLogic();
 }
 
-/**
- * ❗️ [수정 없음] 이 함수는 이미 updateMachineCard를 호출하므로 수정 불필요
- */
+// [수정 없음] 코스 버튼 로직 (UI 즉시 업데이트)
 function addCourseButtonLogic() {
     document.querySelectorAll('.course-btn').forEach(btn => {
         btn.onclick = async (event) => { 
             const machineId = parseInt(event.target.dataset.machineId, 10);
             const courseName = event.target.dataset.courseName;
             
-            // 1. (선제적 UI 업데이트) -> updateMachineCard가 버튼을 disabled로 만듦
             updateMachineCard(machineId, 'WASHING', null);
             
             try {
-                // 2. 서버 API 호출
                 const result = await api.startCourse(machineId, courseName);
                 
-                // 3. 서버 응답으로 타이머 업데이트 (버튼은 여전히 disabled)
                 if (result && result.timer) {
                     const status = result.status || 'WASHING';
                     updateMachineCard(machineId, status, result.timer);
@@ -220,7 +235,6 @@ function addCourseButtonLogic() {
             } catch (error) {
                 console.error("API: 코스 시작 요청 실패:", error);
                 alert(`코스 시작 실패: ${error.message}`);
-                // 4. (롤백) -> updateMachineCard가 버튼을 enabled로 만듦
                 updateMachineCard(machineId, 'OFF', null);
             }
         };
@@ -256,7 +270,7 @@ function translateStatus(status) {
         case 'WASHING': return '세탁 중';
         case 'SPINNING': return '탈수 중';
         case 'FINISHED': return '세탁 완료';
-        case 'OFF': return '대기 중'; 
+        case 'OFF': return '대기 중';
         default: return status;
     }
 }

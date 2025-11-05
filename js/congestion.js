@@ -1,10 +1,8 @@
 // js/congestion.js
-// Person B 담당 (혼잡도 차트 로직)
-// ❗️ (DOMContentLoaded 제거 및 export 함수로 변경)
+// ❗️ (차트 타입을 'line' (선) 그래프로 통일한 수정본)
 
 let myChart; 
 
-// ❗️ [수정] document.addEventListener 대신, 함수만 외부에 노출
 function initializeChart() {
   if (typeof api !== 'undefined' && typeof Chart !== 'undefined') {
     startChartDrawing();
@@ -13,7 +11,7 @@ function initializeChart() {
   }
 }
 
-async function startChartDrawing() { // [수정] 함수 이름 변경
+async function startChartDrawing() { 
     const ctx = document.getElementById('congestionChart');
     if (!ctx) {
         console.error("congestion.html에 'congestionChart' ID가 없습니다.");
@@ -37,11 +35,12 @@ async function startChartDrawing() { // [수정] 함수 이름 변경
     const initialDay = '월';
     const initialData = congestionData[initialDay].slice(9, 22); // 9시~21시 데이터만 잘라냄
     
-    const isMobile = window.innerWidth <= 768;
-    const chartType = isMobile ? 'line' : 'bar'; //
+    // ❗️ [수정] 모바일 감지 로직을 제거하고 'line'으로 고정
+    // const isMobile = window.innerWidth <= 768;
+    const chartType = 'line'; // isMobile ? 'line' : 'bar';
 
     myChart = new Chart(ctx, { 
-        type: chartType, 
+        type: chartType, // ❗️ 항상 'line' 사용
         data: {
             labels: labels,
             datasets: [{
@@ -50,7 +49,7 @@ async function startChartDrawing() { // [수정] 함수 이름 변경
                 backgroundColor: 'rgba(0, 123, 255, 0.5)',
                 borderColor: 'rgba(0, 123, 255, 1)',
                 borderWidth: 1,
-                fill: isMobile ? true : false, 
+                fill: true, // ❗️ 선 그래프이므로 fill을 true로 설정
                 tension: 0.1 
             }]
         },
@@ -87,7 +86,7 @@ async function startChartDrawing() { // [수정] 함수 이름 변경
     });
 }
 
-function updateChart(day, congestionData) { //
+function updateChart(day, congestionData) { 
     const newData = congestionData[day].slice(9, 22);
     
     myChart.data.datasets[0].label = `${day}요일 평균 사용 대수`;
@@ -96,5 +95,4 @@ function updateChart(day, congestionData) { //
     myChart.update();
 }
 
-// ❗️ [수정] 페이지가 로드되면 바로 initializeChart를 호출하도록 설정
 document.addEventListener('DOMContentLoaded', initializeChart);
