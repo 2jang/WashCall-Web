@@ -1,5 +1,5 @@
 // js/main.js
-// ❗️ ('일회성 알림' + '코스 타이머' + '버튼 비활성화' + '5초 재연결' + '새로고침 시 타이머 로드' 최종본)
+// ❗️ ('일회성 알림' + '코스 타이머' + '버튼 비활성화' + '5초 재연결' + '새로고침 타이머' + '웹소켓 타이머 동기화' 최종본)
 
 let connectionStatusElement;
 
@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// [수정됨] main 함수 (tryConnect 호출)
+// [수정 없음] main 함수 (tryConnect 호출)
 async function main() {
     console.log('WashCall WebApp 시작!');
     connectionStatusElement = document.getElementById('connection-status');
@@ -17,7 +17,7 @@ async function main() {
     try {
         updateConnectionStatus('connecting'); 
         const machines = await api.getInitialMachines();
-        renderMachines(machines); // ❗️ 수정된 함수가 연결됨
+        renderMachines(machines);
         tryConnect(); // 웹소켓 연결 시작
     } catch (error) {
         console.error("초기 세탁기 목록 로드 실패:", error);
@@ -25,14 +25,14 @@ async function main() {
     }
 }
 
-// [신규] tryConnect (5초 재연결 로직)
+// [수정 없음] tryConnect (5초 재연결 로직)
 function tryConnect() {
     api.connect(
         () => {
             updateConnectionStatus('success');
         },
         (event) => {
-            handleSocketMessage(event);
+            handleSocketMessage(event); // ❗️ 수정된 함수가 연결됨
         },
         () => {
             updateConnectionStatus('error');
@@ -70,21 +70,34 @@ function updateConnectionStatus(status) {
     }
 }
 
-// [수정 없음] WebSocket 메시지 처리 (일회성 알림 로직 포함)
+/**
+ * ❗️ [핵심 수정] WebSocket 메시지 처리
+ * (웹소켓에서 타이머 값을 읽어 updateMachineCard로 전달)
+ */
 async function handleSocketMessage(event) {
     try {
         const message = JSON.parse(event.data); 
         const machineId = message.machine_id;
         const newStatus = message.status;
+        
+        // ❗️ [신규] 웹소켓에서 타이머 값을 읽음 (없으면 null)
+        // (서버 팀이 message.timer로 보내준다고 가정)
+        const newTimer = message.timer || null;
 
+        // 1. 상태 브로드캐스트 처리 ('room_status')
         if (message.type === 'room_status') {
-            updateMachineCard(machineId, newStatus, null);
+            // ❗️ [수정] 웹소켓이 보낸 newTimer 값을 전달
+            updateMachineCard(machineId, newStatus, newTimer);
         } 
+        // 2. 개별 알림 처리 ('notify')
         else if (message.type === 'notify') {
             const msg = `세탁기 ${machineId} 상태 변경: ${translateStatus(newStatus)}`;
             alert(msg); 
+            // ❗️ 개별 알림에도 타이머가 포함될 수 있으므로 UI 업데이트
+            updateMachineCard(machineId, newStatus, newTimer);
         }
 
+        // 3. 'FINISHED'일 때 토글 끄기
         if (newStatus === 'FINISHED') {
             await turnOffToggle(machineId);
         }
@@ -109,7 +122,9 @@ async function turnOffToggle(machineId) {
 }
 
 
-// [수정 없음] updateMachineCard (버튼 비활성화 로직 포함)
+/**
+ * ❗️ [핵심 수정] updateMachineCard 함수가 웹소켓 타이머를 항상 반영하도록 수정
+ */
 function updateMachineCard(machineId, newStatus, newTimer = null) {
     const card = document.getElementById(`machine-${machineId}`);
     if (!card) return; 
@@ -122,23 +137,25 @@ function updateMachineCard(machineId, newStatus, newTimer = null) {
         statusStrong.textContent = translateStatus(newStatus);
     }
 
+    // ❗️ [수정] 타이머 로직 (기존 텍스트 유지 로직 제거)
     const timerSpan = card.querySelector('.timer-display span');
     if (timerSpan) {
-        if (newTimer !== null && (newStatus === 'WASHING' || newStatus === 'SPINNING')) {
+        if (newTimer !== null && newTimer > 0 && (newStatus === 'WASHING' || newStatus === 'SPINNING')) {
+            // (A) 서버가 타이머 값을 줬을 때 (POST /load, /start_course, *WebSocket*)
             timerSpan.textContent = `${newTimer}분 남음`;
         } else if (newStatus === 'WASHING' || newStatus === 'SPINNING') {
-            // (웹소켓 업데이트 시) 텍스트가 '작동 중...'으로 변경되는 것을 방지하기 위해
-            // 기존 텍스트(예: "45분 남음")를 최대한 유지하도록 수정
-            if (!timerSpan.textContent.includes('남음')) {
-                timerSpan.textContent = '작동 중...';
-            }
+            // (B) 타이머 값이 없는데 작동 중일 때 (기본값)
+            timerSpan.textContent = '작동 중...';
         } else if (newStatus === 'FINISHED') {
+            // (C) 완료
             timerSpan.textContent = '세탁 완료!';
         } else {
+            // (D) 대기 중
             timerSpan.textContent = '대기 중';
         }
     }
 
+    // [수정 없음] 버튼 비활성화 로직
     const courseButtons = card.querySelectorAll('.course-btn');
     const shouldBeDisabled = (newStatus === 'WASHING' || newStatus === 'SPINNING');
     
@@ -148,7 +165,7 @@ function updateMachineCard(machineId, newStatus, newTimer = null) {
 }
 
 /**
- * ❗️ [핵심 수정] renderMachines 함수가 /load에서 받은 timer 값을 사용하도록 수정
+ * ❗️ [수정 없음] renderMachines 함수가 /load에서 받은 timer 값을 사용
  */
 function renderMachines(machines) {
     const container = document.getElementById('machine-list-container');
@@ -161,22 +178,18 @@ function renderMachines(machines) {
         machineDiv.classList.add(`status-${machine.status.toLowerCase()}`);
         machineDiv.id = `machine-${machine.machine_id}`; 
         
-        // ❗️ [수정] /load에서 받은 timer 값을 확인
         let displayTimerText = '대기 중';
         const machineTimer = machine.timer; // (서버가 'timer' 필드로 준다고 가정)
 
         if ((machine.status === 'WASHING' || machine.status === 'SPINNING')) {
             if (machineTimer !== null && machineTimer !== undefined && machineTimer > 0) {
-                // ❗️ (A) 서버가 타이머 값을 줬을 때
                 displayTimerText = `${machineTimer}분 남음`;
             } else {
-                // ❗️ (B) 서버가 타이머 값을 안 줬을 때 (기본값)
                 displayTimerText = '작동 중...'; 
             }
         } else if (machine.status === 'FINISHED') {
             displayTimerText = '세탁 완료!';
         }
-        // ❗️ [수정] 끝
 
         const isDisabled = (machine.status === 'WASHING' || machine.status === 'SPINNING');
         const disabledAttribute = isDisabled ? 'disabled' : '';
@@ -248,17 +261,42 @@ function addNotifyMeLogic() {
             const machineId = parseInt(event.target.dataset.machineId, 10);
             const shouldSubscribe = event.target.checked; 
 
-            if (shouldSubscribe && Notification.permission !== 'granted') {
-                alert("먼저 '전체 알림 켜기' 버튼을 눌러 알림 권한을 허용해주세요.");
-                event.target.checked = false; 
-                return; 
-            }
+            // (index.html에서 push.js가 main.js보다 먼저 로드되어야 함)
+            if (shouldSubscribe && typeof requestPermissionAndGetToken === 'function') {
+                // --- 1. 토글을 켰을 때 (구독 신청) ---
+                try {
+                    const tokenOrStatus = await requestPermissionAndGetToken();
 
-            try {
-                await api.toggleNotifyMe(machineId, shouldSubscribe);
-            } catch (error) {
-                alert(`알림 설정 실패: ${error.message}`);
-                event.target.checked = !shouldSubscribe; 
+                    if (tokenOrStatus === 'denied') {
+                        alert("알림이 '차단' 상태입니다.\n\n주소창의 🔒 아이콘을 클릭하여 '알림'을 '허용'으로 변경해주세요.");
+                        throw new Error('알림 권한이 차단되었습니다.'); 
+                    
+                    } else if (tokenOrStatus === null) {
+                        throw new Error('알림 권한이 거부되었습니다.'); 
+                    
+                    } else {
+                        const token = tokenOrStatus;
+                        await api.registerPushToken(token);
+                        await api.toggleNotifyMe(machineId, true);
+                        alert('알림이 등록되었습니다.');
+                    }
+
+                } catch (error) {
+                    alert(`알림 등록 실패: ${error.message}`);
+                    event.target.checked = false; // 롤백
+                }
+            } else if (!shouldSubscribe) {
+                // --- 2. 토글을 껐을 때 (구독 취소) ---
+                try {
+                    await api.toggleNotifyMe(machineId, false);
+                } catch (error) {
+                    alert(`알림 해제 실패: ${error.message}`);
+                    event.target.checked = true; // 롤백
+                }
+            } else if (shouldSubscribe) {
+                // (push.js가 로드되지 않았거나, 함수가 없는 비상 상황)
+                 alert("먼저 '전체 알림 켜기' 버튼을 눌러 알림 권한을 허용해주세요.");
+                 event.target.checked = false; 
             }
         });
     });
