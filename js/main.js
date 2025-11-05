@@ -1,5 +1,5 @@
 // js/main.js
-// ❗️ ('일회성 알림' + '코스 타이머' + '버튼 비활성화' + '5초 재연결' 로직이 모두 포함된 최종본)
+// ❗️ ('일회성 알림' + '코스 타이머' + '버튼 비활성화' + '5초 재연결' + '새로고침 시 타이머 로드' 최종본)
 
 let connectionStatusElement;
 
@@ -9,47 +9,33 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// [수정됨] main 함수 (tryConnect 호출)
 async function main() {
     console.log('WashCall WebApp 시작!');
     connectionStatusElement = document.getElementById('connection-status');
     
-    // 1. 초기 세탁기 목록 로드
     try {
-        updateConnectionStatus('connecting'); // (연결 시도 중... 표시)
+        updateConnectionStatus('connecting'); 
         const machines = await api.getInitialMachines();
-        renderMachines(machines);
-
-        // 2. ❗️ [수정] 최초 웹소켓 연결 시도
-        tryConnect();
-
+        renderMachines(machines); // ❗️ 수정된 함수가 연결됨
+        tryConnect(); // 웹소켓 연결 시작
     } catch (error) {
         console.error("초기 세탁기 목록 로드 실패:", error);
-        updateConnectionStatus('error'); // (목록 로드 실패 시에도 '연결 끊김' 표시)
+        updateConnectionStatus('error'); 
     }
 }
 
-/**
- * ❗️ [신규] WebSocket 연결 및 재연결 로직
- */
+// [신규] tryConnect (5초 재연결 로직)
 function tryConnect() {
-    // 1. 'api.connect' 호출 시 3개의 콜백 함수를 전달
     api.connect(
-        // 1A: (onOpen) 연결 성공 시
         () => {
             updateConnectionStatus('success');
         },
-        
-        // 1B: (onMessage) 메시지 수신 시
         (event) => {
             handleSocketMessage(event);
         },
-        
-        // 1C: (onError) 연결 실패 또는 끊김 시
         () => {
-            // ❗️ UI 업데이트 (5초 후 재연결 시도... 텍스트 표시)
             updateConnectionStatus('error');
-            
-            // ❗️ [핵심] 5초 후에 이 함수('tryConnect')를 다시 호출
             setTimeout(() => {
                 console.log("WebSocket 재연결 시도...");
                 tryConnect();
@@ -57,7 +43,6 @@ function tryConnect() {
         }
     );
 }
-
 
 // [수정 없음] 연결 상태 UI
 function updateConnectionStatus(status) {
@@ -79,7 +64,6 @@ function updateConnectionStatus(status) {
             break;
         case 'error':
             connectionStatusElement.classList.add('error');
-            // ❗️ (텍스트 수정 없음. 이 텍스트가 정확했음)
             connectionStatusElement.textContent = '❌ 서버와의 연결이 끊어졌습니다. 5초 후 재연결 시도...';
             connectionStatusElement.style.opacity = 1;
             break;
@@ -143,7 +127,11 @@ function updateMachineCard(machineId, newStatus, newTimer = null) {
         if (newTimer !== null && (newStatus === 'WASHING' || newStatus === 'SPINNING')) {
             timerSpan.textContent = `${newTimer}분 남음`;
         } else if (newStatus === 'WASHING' || newStatus === 'SPINNING') {
-            timerSpan.textContent = '작동 중...';
+            // (웹소켓 업데이트 시) 텍스트가 '작동 중...'으로 변경되는 것을 방지하기 위해
+            // 기존 텍스트(예: "45분 남음")를 최대한 유지하도록 수정
+            if (!timerSpan.textContent.includes('남음')) {
+                timerSpan.textContent = '작동 중...';
+            }
         } else if (newStatus === 'FINISHED') {
             timerSpan.textContent = '세탁 완료!';
         } else {
@@ -159,7 +147,9 @@ function updateMachineCard(machineId, newStatus, newTimer = null) {
     });
 }
 
-// [수정 없음] renderMachines (버튼 비활성화 로직 포함)
+/**
+ * ❗️ [핵심 수정] renderMachines 함수가 /load에서 받은 timer 값을 사용하도록 수정
+ */
 function renderMachines(machines) {
     const container = document.getElementById('machine-list-container');
     if (!container) return;
@@ -171,12 +161,22 @@ function renderMachines(machines) {
         machineDiv.classList.add(`status-${machine.status.toLowerCase()}`);
         machineDiv.id = `machine-${machine.machine_id}`; 
         
+        // ❗️ [수정] /load에서 받은 timer 값을 확인
         let displayTimerText = '대기 중';
-        if (machine.status === 'WASHING' || machine.status === 'SPINNING') {
-            displayTimerText = `작동 중...`; 
+        const machineTimer = machine.timer; // (서버가 'timer' 필드로 준다고 가정)
+
+        if ((machine.status === 'WASHING' || machine.status === 'SPINNING')) {
+            if (machineTimer !== null && machineTimer !== undefined && machineTimer > 0) {
+                // ❗️ (A) 서버가 타이머 값을 줬을 때
+                displayTimerText = `${machineTimer}분 남음`;
+            } else {
+                // ❗️ (B) 서버가 타이머 값을 안 줬을 때 (기본값)
+                displayTimerText = '작동 중...'; 
+            }
         } else if (machine.status === 'FINISHED') {
             displayTimerText = '세탁 완료!';
         }
+        // ❗️ [수정] 끝
 
         const isDisabled = (machine.status === 'WASHING' || machine.status === 'SPINNING');
         const disabledAttribute = isDisabled ? 'disabled' : '';
@@ -241,7 +241,7 @@ function addCourseButtonLogic() {
     });
 }
 
-// [수정 없음] 개별 토글 로직 (FCM 로직 없음)
+// [수정 없음] 개별 토글 로직 (Q1 버전 - FCM 로직 없음)
 function addNotifyMeLogic() {
     document.querySelectorAll('.notify-me-toggle').forEach(toggle => {
         toggle.addEventListener('change', async (event) => {

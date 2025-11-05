@@ -1,5 +1,5 @@
 // js/push.js
-// ❗️ ('전체 알림 켜기/끄기' 마스터 토글 스위치 최종본)
+// ❗️ ('알림 차단' 시 친절한 안내 가이드가 포함된 최종본)
 
 // 1. Firebase 설정 (이전과 동일)
  const firebaseConfig = {
@@ -15,7 +15,7 @@
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// ❗️ 마스터 버튼 DOM을 전역에서 참조
+// 마스터 버튼 DOM을 전역에서 참조
 let masterPushButton; 
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -44,60 +44,68 @@ function setupMasterPushButton() {
       masterPushButton.textContent = '알림 설정 실패';
     });
 
-  // 3. ❗️ [핵심] 마스터 버튼 클릭 이벤트
+  // 3. 마스터 버튼 클릭 이벤트
   masterPushButton.onclick = onMasterToggleClick;
 
-  // 4. ❗️ [핵심] 페이지 로드 시, 그리고 2초 후(DOM 렌더링 대기) 버튼 상태 업데이트
+  // 4. 페이지 로드 시 및 2초 후 버튼 상태 업데이트
   updateMasterButtonText();
-  setTimeout(updateMasterButtonText, 2000); // main.js가 렌더링할 시간 대기
+  setTimeout(updateMasterButtonText, 2000); 
 
-  // 5. ❗️ [핵심] 개별 토글이 변경될 때마다 마스터 버튼 텍스트 동기화
-  // (이벤트 위임 사용)
+  // 5. 개별 토글 변경 시 마스터 버튼 동기화
   document.body.addEventListener('change', event => {
       if (event.target.classList.contains('notify-me-toggle')) {
-          // 개별 토글이 변경되면, 잠시 후 마스터 버튼 텍스트 업데이트
-          setTimeout(updateMasterButtonText, 50); 
+          setTimeout(updateMasterButtonText, 50);
       }
   });
 }
 
 /**
- * ❗️ [신규] 마스터 토글 버튼 클릭 시 실행되는 메인 로직
+ * ❗️ [수정됨] 마스터 토글 버튼 클릭 시 실행되는 메인 로직
  */
 async function onMasterToggleClick() {
     masterPushButton.disabled = true; // 중복 클릭 방지
 
-    // 1. 현재 켜진 토글과 전체 토글 수를 계산
+    // 1. 현재 토글 상태 계산
     const allToggles = document.querySelectorAll('.notify-me-toggle');
     const checkedToggles = document.querySelectorAll('.notify-me-toggle:checked');
     
     // 2. 켤지(true) 끌지(false) 결정
-    // (절반 이하로 켜져 있으면 '켜기' 실행, 아니면 '끄기' 실행)
     const shouldTurnOn = (checkedToggles.length <= allToggles.length / 2);
 
     if (shouldTurnOn) {
         // --- [A] 전체 켜기 로직 ---
         masterPushButton.textContent = '권한 확인 중...';
         try {
-            // 3. 권한 요청 및 토큰 발급 (Q1 로직)
-            const token = await requestPermissionAndGetToken();
-            if (!token) throw new Error('알림 권한이 거부되었습니다.');
+            // 3. ❗️ 수정된 권한/토큰 함수 호출
+            const tokenOrStatus = await requestPermissionAndGetToken();
 
-            // 4. FCM 토큰 서버 등록
-            await api.registerPushToken(token);
-
-            // 5. 모든 토글을 켜고 API 호출
-            await toggleAllMachinesAPI(allToggles, true);
-            alert('전체 알림이 켜졌습니다.');
+            // 4. ❗️ [핵심 Q1 로직] 반환값에 따라 분기 처리
+            if (tokenOrStatus === 'denied') {
+                // ❗️ (A-1) 이미 차단된 경우
+                alert("알림이 '차단' 상태입니다.\n\n알림을 받으려면, 주소창의 🔒 아이콘을 클릭하여 '알림'을 '허용'으로 변경해주세요.");
+                masterPushButton.textContent = '알림 거부됨';
+                masterPushButton.disabled = false; // 다시 누를 수 있게 함
+                return; // 함수 종료
+            
+            } else if (tokenOrStatus === null) {
+                // ❗️ (A-2) 팝업을 띄웠으나 '차단' 또는 '무시'한 경우
+                throw new Error('알림 권한이 거부되었습니다.');
+            
+            } else {
+                // ❗️ (A-3) 성공: 토큰을 정상적으로 받음
+                const token = tokenOrStatus;
+                await api.registerPushToken(token);
+                await toggleAllMachinesAPI(allToggles, true);
+                alert('전체 알림이 켜졌습니다.');
+            }
 
         } catch (error) {
             alert(`전체 켜기 실패: ${error.message}`);
         }
     } else {
-        // --- [B] 전체 끄기 로직 ---
+        // --- [B] 전체 끄기 로직 (수정 없음) ---
         masterPushButton.textContent = '끄는 중...';
         try {
-            // 3. 권한 필요 없음. 모든 토글을 끄고 API 호출
             await toggleAllMachinesAPI(allToggles, false);
             alert('전체 알림이 꺼졌습니다.');
         } catch (error) {
@@ -105,35 +113,29 @@ async function onMasterToggleClick() {
         }
     }
     
-    // 4. 최종 버튼 텍스트 업데이트 및 버튼 활성화
+    // 5. 최종 버튼 텍스트 업데이트 및 버튼 활성화
     updateMasterButtonText();
     masterPushButton.disabled = false;
 }
 
 /**
- * ❗️ [신규] 모든 토글의 DOM을 업데이트하고 서버 API를 병렬 호출
- * @param {NodeListOf<Element>} toggles - 제어할 토글 요소 목록
- * @param {boolean} shouldBeOn - 켜야 할지(true) 꺼야 할지(false)
+ * ❗️ [수정 없음] 모든 토글 DOM 업데이트 및 API 병렬 호출
  */
 async function toggleAllMachinesAPI(toggles, shouldBeOn) {
     const tasks = [];
     for (const toggle of toggles) {
-        // 1. DOM(UI) 상태 변경
         toggle.checked = shouldBeOn;
-        
-        // 2. 서버 API 호출
         const machineId = parseInt(toggle.dataset.machineId, 10);
         if (machineId) {
             tasks.push(api.toggleNotifyMe(machineId, shouldBeOn));
         }
     }
-    // 3. 모든 API 호출이 끝날 때까지 대기
     await Promise.all(tasks);
 }
 
 
 /**
- * ❗️ [신규] 현재 토글 상태를 읽어 마스터 버튼 텍스트를 업데이트
+ * ❗️ [수정 없음] 마스터 버튼 텍스트 업데이트
  */
 function updateMasterButtonText() {
     if (!masterPushButton) return;
@@ -146,29 +148,37 @@ function updateMasterButtonText() {
         return;
     }
 
-    // 절반 이하로 켜져 있으면 '켜기' 버튼 표시, 아니면 '끄기' 버튼 표시
     const shouldTurnOn = (checkedToggles.length <= allToggles.length / 2);
     masterPushButton.textContent = shouldTurnOn ? "🔔 전체 알림 켜기" : "🔕 전체 알림 끄기";
 }
 
 
 /**
- * ❗️ [신규] 권한 요청 및 FCM 토큰 발급 헬퍼 (Q1 로직)
- * @returns {Promise<string|null>} FCM 토큰 또는 실패 시 null
+ * ❗️ [수정됨] 권한 요청 및 FCM 토큰 발급 헬퍼
+ * (이미 'denied' 상태인지 미리 확인)
  */
 async function requestPermissionAndGetToken() {
-    // (이 함수는 Q1 응답의 requestPermissionAndGetToken과 동일)
+    
+    // 1. ❗️ [신규] 현재 권한 상태를 먼저 확인
+    if (Notification.permission === 'denied') {
+        console.warn('알림 권한이 이미 \'차단\' 상태입니다.');
+        // ❗️ 'denied'라는 특별한 값을 반환하여 호출자가 알 수 있게 함
+        return 'denied'; 
+    }
+
+    // 2. 권한 요청 (default 상태일 때만 팝업이 뜸)
     const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
         const currentToken = await messaging.getToken();
         if (currentToken) {
             console.log('FCM 토큰 획득:', currentToken);
-            return currentToken;
+            return currentToken; // 성공
         } else {
-            throw new Error('FCM 토큰 발급에 실패했습니다.');
+            throw new Error('FCM 토큰 발급에 실패했습니다.'); // 실패
         }
     } else {
-        return null; // (거부 시 null 반환)
+        // 'default' (무시) 또는 'denied' (방금 차단)
+        return null; // 거부
     }
 }
