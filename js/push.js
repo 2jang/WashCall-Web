@@ -2,14 +2,14 @@
 // ❗️ ('알림 차단' 시 친절한 안내 가이드가 포함된 최종본)
 
 // 1. Firebase 설정 (이전과 동일)
- const firebaseConfig = {
-    apiKey: "AIzaSyAiL4dY0dkiYIsXdQDByULXZB2HJLxssvM",
-    authDomain: "washcall-server.firebaseapp.com",
-    projectId: "washcall-server",
-    storageBucket: "washcall-server.firebasestorage.app",
-    messagingSenderId: "695727341464",
-    appId: "1:695727341464:web:56a51f41431c27c56fb5ed",
-    measurementId: "G-SL6R08TWHP"
+const firebaseConfig = {
+    apiKey: "AIzaSyD0MBr9do9Hl3AJsNv0yZJRupDT1l-8dVE",
+    authDomain: "washcallproject.firebaseapp.com",
+    projectId: "washcallproject",
+    storageBucket: "washcallproject.firebasestorage.app",
+    messagingSenderId: "401971602509",
+    appId: "1:401971602509:web:45ee34d4ed2454555aa804",
+    measurementId: "G-K4FHGY7MZT"
   };
 
 firebase.initializeApp(firebaseConfig);
