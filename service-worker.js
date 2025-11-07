@@ -26,21 +26,58 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
     console.log('[service-worker.js] 백그라운드 메시지 수신:', payload);
     
-    // (payload.data에서 title/body를 읽는 로직은 수정 없음)
-    const notificationTitle = payload.data.title;
+    // ✅ Data-only 메시지 지원 (notification과 data 모두 체크)
+    const notificationTitle = payload.notification?.title || payload.data?.title || '알림';
+    const notificationBody = payload.notification?.body || payload.data?.body || '새 메시지가 도착했습니다.';
+    const machineId = payload.data?.machine_id;
+    
     const notificationOptions = {
-        body: payload.data.body,
-        icon: 'favicon.png'
+        body: notificationBody,
+        icon: 'favicon.png',
+        badge: 'favicon.png',
+        tag: machineId ? `machine-${machineId}` : 'notification',
+        requireInteraction: false,
+        data: {
+            url: machineId ? `index.html#machine-${machineId}` : 'index.html',
+            machine_id: machineId
+        }
     };
 
     self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// 5. 알림 클릭 시 동작 (기존 코드 유지)
+// 5. 알림 클릭 시 동작 (개선)
 self.addEventListener('notificationclick', event => {
+  console.log('[service-worker.js] 알림 클릭:', event.notification);
+  
   event.notification.close(); // 알림 닫기
   
+  // ✅ 알림 데이터에서 URL과 machine_id 가져오기
+  const targetUrl = event.notification.data?.url || 'index.html';
+  const machineId = event.notification.data?.machine_id;
+  
   event.waitUntil(
-    clients.openWindow('index.html')
+    // 이미 열려있는 탭이 있으면 포커스, 없으면 새 탭
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(clientList => {
+        // 이미 열려있는 WashCall 탭 찾기
+        for (const client of clientList) {
+          if (client.url.includes('index.html') && 'focus' in client) {
+            // ✅ Service Worker → 클라이언트 메시지 전송 (스크롤 요청)
+            if (machineId) {
+              client.postMessage({
+                type: 'SCROLL_TO_MACHINE',
+                machine_id: machineId
+              });
+            }
+            return client.focus();
+          }
+        }
+        
+        // 열려있는 탭이 없으면 새로 열기
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      })
   );
 });
