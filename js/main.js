@@ -1,5 +1,5 @@
 // js/main.js
-// ❗️ ('개별 알림 토글' 로직 '복원' 최종본)
+// ❗️ (타이머 로직이 '복원'된 최종본)
 // ❗️ ('일회성 알림' + 'WASHING/클릭 시 비활성화' + '5초 재연결' + '개별 팝업')
 
 let connectionStatusElement;
@@ -18,7 +18,7 @@ async function main() {
     try {
         updateConnectionStatus('connecting'); 
         const machines = await api.getInitialMachines();
-        renderMachines(machines); // ❗️ 수정된 함수가 연결됨
+        renderMachines(machines); 
         tryConnect(); // 웹소켓 연결 시작
     } catch (error) {
         console.error("초기 세탁기 목록 로드 실패:", error);
@@ -72,26 +72,27 @@ function updateConnectionStatus(status) {
 }
 
 /**
- * ❗️ [핵심 수정] WebSocket 메시지 처리 ('일회성 알림' 로직 '복원')
+ * ❗️ [핵심 수정] WebSocket 메시지 처리 (타이머 로직 '복원')
  */
 async function handleSocketMessage(event) {
     try {
         const message = JSON.parse(event.data); 
         const machineId = message.machine_id;
         const newStatus = message.status;
-        // (타이머 로직 임시 제거)
-        // const newTimer = message.timer || null; 
+        
+        // ❗️ [복원] 타이머 값을 파싱합니다. (null일 수도 있습니다)
+        const newTimer = (message.timer !== undefined) ? message.timer : null; 
 
         if (message.type === 'room_status') {
-            updateMachineCard(machineId, newStatus); // ❗️ newTimer 인자 제거
+            updateMachineCard(machineId, newStatus, newTimer); // ❗️ newTimer 인자 추가
         } 
         else if (message.type === 'notify') {
             const msg = `세탁기 ${machineId} 상태 변경: ${translateStatus(newStatus)}`;
             alert(msg); 
-            updateMachineCard(machineId, newStatus); // ❗️ newTimer 인자 제거
+            updateMachineCard(machineId, newStatus, newTimer); // ❗️ newTimer 인자 추가
         }
 
-        // ❗️ [복원] 'FINISHED'일 때 '개별 토글'을 자동으로 끈다
+        // ❗️ [수정 없음] 'FINISHED'일 때 '개별 토글'을 자동으로 끈다
         if (newStatus === 'FINISHED') {
             await turnOffToggle(machineId, false); // (서버에 알릴 필요 없음)
         }
@@ -102,7 +103,7 @@ async function handleSocketMessage(event) {
 }
 
 /**
- * ❗️ [핵심] 토글 자동 끄기 헬퍼 (일회성 알림) '복원'
+ * ❗️ [수정 없음] 토글 자동 끄기 헬퍼 (일회성 알림)
  */
 async function turnOffToggle(machineId, notifyServer) {
     const toggle = document.querySelector(`.notify-me-toggle[data-machine-id="${machineId}"]`);
@@ -111,7 +112,6 @@ async function turnOffToggle(machineId, notifyServer) {
         toggle.checked = false;
         
         if (notifyServer) {
-            // (사용자가 직접 껐을 때만 서버에 알림)
             try {
                 await api.toggleNotifyMe(machineId, false);
             } catch (error) {
@@ -123,9 +123,9 @@ async function turnOffToggle(machineId, notifyServer) {
 
 
 /**
- * ❗️ [수정] updateMachineCard (타이머 로직 임시 제거됨)
+ * ❗️ [핵심 수정] updateMachineCard (타이머 로직 '복원')
  */
-function updateMachineCard(machineId, newStatus) {
+function updateMachineCard(machineId, newStatus, newTimer) {
     const card = document.getElementById(`machine-${machineId}`);
     if (!card) return; 
 
@@ -137,15 +137,10 @@ function updateMachineCard(machineId, newStatus) {
         statusStrong.textContent = translateStatus(newStatus);
     }
 
+    // ❗️ [수정] 타이머 헬퍼 함수를 사용하여 텍스트 업데이트
     const timerSpan = card.querySelector('.timer-display span');
     if (timerSpan) {
-        if (newStatus === 'WASHING' || newStatus === 'SPINNING') {
-            timerSpan.textContent = '작동 중...';
-        } else if (newStatus === 'FINISHED') {
-            timerSpan.textContent = '세탁 완료!';
-        } else {
-            timerSpan.textContent = '대기 중';
-        }
+        timerSpan.textContent = formatTimer(newTimer, newStatus);
     }
 
     // [수정 없음] 버튼 비활성화 로직 (Case 1: WASHING이면 비활성화)
@@ -161,7 +156,7 @@ function updateMachineCard(machineId, newStatus) {
 }
 
 /**
- * ❗️ [핵심 수정] renderMachines ('개별 토글' HTML '복원')
+ * ❗️ [핵심 수정] renderMachines (타이머 로직 '복원')
  */
 function renderMachines(machines) {
     const container = document.getElementById('machine-list-container');
@@ -174,19 +169,14 @@ function renderMachines(machines) {
         machineDiv.classList.add(`status-${machine.status.toLowerCase()}`);
         machineDiv.id = `machine-${machine.machine_id}`; 
         
-        let displayTimerText = '대기 중';
-        if ((machine.status === 'WASHING' || machine.status === 'SPINNING')) {
-            displayTimerText = '작동 중...'; 
-        } else if (machine.status === 'FINISHED') {
-            displayTimerText = '세탁 완료!';
-        }
+        // ❗️ [수정] /load에서 받은 machine.timer 값을 사용
+        const displayTimerText = formatTimer(machine.timer, machine.status);
 
         const isDisabled = (machine.status === 'WASHING' || machine.status === 'SPINNING');
         const disabledAttribute = isDisabled ? 'disabled' : '';
 
         const machineDisplayName = machine.machine_name || `세탁기 ${machine.machine_id}`;
         
-        // ❗️ [복원] /load API가 'isusing'을 보내준다고 가정
         const isCurrentlyUsing = (machine.isusing === 1 || machine.isusing === true);
         const checkedAttribute = isCurrentlyUsing ? 'checked' : '';
 
@@ -216,7 +206,7 @@ function renderMachines(machines) {
     });
 
     addCourseButtonLogic();
-    addNotifyMeLogic(); // ❗️ '개별 토글' 로직 함수 호출 복원
+    addNotifyMeLogic(); 
 }
 
 // [수정 없음] 코스 버튼 로직 (Case 2: 클릭 시 즉시 비활성화)
@@ -238,9 +228,13 @@ function addCourseButtonLogic() {
             });
 
             try {
-                await api.startCourse(machineId, courseName);
+                // ❗️ [수정] API 호출 시 타이머 값을 받아옵니다.
+                const response = await api.startCourse(machineId, courseName);
                 console.log(`API: 코스 시작 요청 성공 (서버에 알림)`);
-                // (API 성공 시, 버튼은 비활성화 상태 '유지')
+                
+                // ❗️ [수정] 서버가 보낸 타이머 값으로 즉시 UI 업데이트
+                updateMachineCard(machineId, "WASHING", response.timer);
+
             } catch (error) {
                 console.error("API: 코스 시작 요청 실패:", error);
                 alert(`코스 시작 실패: ${error.message}`);
@@ -255,7 +249,8 @@ function addCourseButtonLogic() {
 }
 
 /**
- * ❗️ [핵심] 개별 토글 로직 (개별 팝업 기능 포함) '복원'
+ * ❗️ [수정] 개별 토글 로직 (기능은 동일, push.js와의 연동 로직 추가)
+ * (이 함수는 '이전' 답변에서 이미 수정되었습니다. 타이머와는 직접 관련 없습니다.)
  */
 function addNotifyMeLogic() {
     document.querySelectorAll('.notify-me-toggle').forEach(toggle => {
@@ -266,7 +261,33 @@ function addNotifyMeLogic() {
             if (shouldSubscribe) {
                 // --- 1. 토글을 켰을 때 (구독 신청) ---
                 try {
-                    // (index.html에서 push.js가 main.js보다 먼저 로드되어야 함)
+                    // ❗️ [신규] 중복 방지: '세탁실 알림'이 켜져 있으면 끈다.
+                    const roomSubState = localStorage.getItem('washcallRoomSubState');
+                    if (roomSubState === 'true') {
+                        console.log("중복 방지: '세탁실 알림'을 끕니다.");
+                        
+                        // (push.js의 끄기 로직을 여기서도 수행)
+                        // 1. API 끄기
+                        const allToggles = document.querySelectorAll('.notify-me-toggle');
+                        
+                        const tasks = [];
+                        allToggles.forEach(t => {
+                            const mid = parseInt(t.dataset.machineId, 10);
+                            if (mid) tasks.push(api.toggleNotifyMe(mid, false));
+                        });
+                        await Promise.all(tasks);
+                        
+                        // 2. localStorage 끄기
+                        localStorage.setItem('washcallRoomSubState', 'false');
+                        
+                        // 3. 마스터 버튼 UI 끄기
+                        const masterBtn = document.getElementById('room-subscribe-button');
+                        if (masterBtn) masterBtn.textContent = "🔔 세탁실 알림 받기";
+                        
+                        alert("'세탁실 전체 알림'이 꺼지고, '개별 알림'이 켜집니다.");
+                    }
+                    
+                    // (기존 '개별' 켜기 로직)
                     const tokenOrStatus = await requestPermissionAndGetToken();
 
                     if (tokenOrStatus === 'denied') {
@@ -279,11 +300,7 @@ function addNotifyMeLogic() {
                     } else {
                         const token = tokenOrStatus;
                         await api.registerPushToken(token);
-                        
-                        // ❗️ '세탁기 구독 버튼' API 호출
                         await api.toggleNotifyMe(machineId, true);
-                        
-                        alert('알림이 등록되었습니다.');
                     }
 
                 } catch (error) {
@@ -293,7 +310,6 @@ function addNotifyMeLogic() {
             } else {
                 // --- 2. 토글을 껐을 때 (구독 취소) ---
                 try {
-                    // ❗️ '일회성 알림'이 아닌, 사용자가 직접 껐을 때
                     await turnOffToggle(machineId, true); // (서버에 알림)
                 } catch (error) {
                     alert(`알림 해제 실패: ${error.message}`);
@@ -312,5 +328,31 @@ function translateStatus(status) {
         case 'FINISHED': return '세탁 완료';
         case 'OFF': return '대기 중';
         default: return status;
+    }
+}
+
+/**
+ * ❗️ [신규] 타이머 표시 헬퍼 함수
+ */
+function formatTimer(timerValue, status) {
+    // timerValue는 '분' 단위의 숫자 (e.g., 25) 또는 null
+    
+    if (status === 'WASHING' || status === 'SPINNING') {
+        if (timerValue === null || timerValue === undefined) {
+            return '작동 중...'; // (서버가 타이머 계산을 못한 경우)
+        }
+        
+        // ❗️ [수정] 0분일 때 "마무리 중" 표시
+        if (timerValue <= 0) {
+            return '마무리 중...'; 
+        }
+        
+        return `약 ${timerValue}분 남음`;
+    
+    } else if (status === 'FINISHED') {
+        return '세탁 완료!';
+    
+    } else { // 'OFF' 또는 'EXT_VIBE' 등
+        return '대기 중';
     }
 }

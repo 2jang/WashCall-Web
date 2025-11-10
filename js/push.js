@@ -1,7 +1,7 @@
 // js/push.js
-// ❗️ ('세탁실 구독' 버튼이 '모든 /notify_me'를 호출하도록 수정된 최종본)
+// ❗️ (중복 알림 방지: '세탁실'과 '개별'이 연동되는 최종본)
 
-// 1. Firebase 설정 (washcallproject)
+// 1. Firebase 설정 (그대로)
  const firebaseConfig = {
     apiKey: "AIzaSyD0MBr9do9Hl3AJsNv0yZJRupDT1l-8dVE",
     authDomain: "washcallproject.firebaseapp.com",
@@ -11,16 +11,17 @@
     appId: "1:401971602509:web:45ee34d4ed2454555aa804",
     measurementId: "G-K4FHGY7MZT"
   };
-
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// ❗️ 마스터 버튼 DOM을 전역에서 참조
+// --- ❗️ 상태 저장을 위한 변수 ---
 let masterPushButton; 
+const STORAGE_KEY = 'washcallRoomSubState'; 
+let isRoomSubscribed = false; 
+// ---
 
 document.addEventListener('DOMContentLoaded', function() {
   if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-    // ❗️ [수정] ID 변경 (index.html의 롤백된 ID와 일치)
     masterPushButton = document.getElementById('room-subscribe-button');
     setupMasterPushButton();
   }
@@ -35,7 +36,6 @@ function setupMasterPushButton() {
     return;
   }
 
-  // 2. 서비스 워커 등록
   navigator.serviceWorker.register('/service-worker.js')
     .then(registration => {
       messaging.useServiceWorker(registration);
@@ -45,133 +45,142 @@ function setupMasterPushButton() {
       masterPushButton.textContent = '알림 설정 실패';
     });
 
-  // 3. ❗️ [수정] 새 버튼 클릭 이벤트
-  masterPushButton.onclick = onMasterToggleClick;
-
-  // 4. ❗️ [수정] 버튼 텍스트 초기화 (main.js가 로드될 때까지 대기)
-  setTimeout(updateMasterButtonText, 2000); 
-
-  // 5. ❗️ [신규] 개별 토글 변경 시 마스터 버튼 동기화
-  document.body.addEventListener('change', event => {
-      if (event.target.classList.contains('notify-me-toggle')) {
-          setTimeout(updateMasterButtonText, 50);
-      }
-  });
+  // 3. localStorage에서 상태를 불러옴
+  isRoomSubscribed = (localStorage.getItem(STORAGE_KEY) === 'true');
+  
+  // 4. 불러온 상태에 맞게 버튼 텍스트 초기화
+  updateMasterButtonText(isRoomSubscribed);
+  
+  // 5. 버튼 클릭 이벤트 (토글 기능)
+  masterPushButton.onclick = onMasterSubscribeToggle;
 }
 
 /**
- * ❗️ [핵심 수정] '세탁실 구독' 버튼 클릭 시 (마스터 토글)
+ * ❗️ [핵심 수정] '세탁실 알림' 켜기/끄기 토글
  */
-async function onMasterToggleClick() {
-    masterPushButton.disabled = true; // 중복 클릭 방지
-
-    // 1. 현재 켜진 토글과 전체 토글 수를 계산
-    const allToggles = document.querySelectorAll('.notify-me-toggle');
-    const checkedToggles = document.querySelectorAll('.notify-me-toggle:checked');
+async function onMasterSubscribeToggle() {
+    masterPushButton.disabled = true;
     
-    // 2. 켤지(true) 끌지(false) 결정
-    const shouldTurnOn = (checkedToggles.length <= allToggles.length / 2);
+    // 1. 목표 상태 결정
+    const targetState = !isRoomSubscribed; // true = 켜기, false = 끄기
 
-    if (shouldTurnOn) {
-        // --- [A] 전체 켜기 로직 ---
-        masterPushButton.textContent = '권한 확인 중...';
-        try {
-            // 3. 권한 요청 및 토큰 발급
-            const tokenOrStatus = await requestPermissionAndGetToken();
-
-            if (tokenOrStatus === 'denied') {
-                alert("알림이 '차단' 상태입니다.\n\n알림을 받으려면, 주소창의 🔒 아이콘을 클릭하여 '알림'을 '허용'으로 변경해주세요.");
-                throw new Error('알림 권한이 차단되었습니다.');
+    try {
+        if (targetState === true) {
+            // --- [A] 켜기 로직 ---
+            masterPushButton.textContent = '권한 확인 중...';
             
+            // 1-A. 권한/토큰 확보
+            const tokenOrStatus = await requestPermissionAndGetToken();
+            if (tokenOrStatus === 'denied') {
+                throw new Error("알림이 '차단' 상태입니다. 주소창의 🔒 아이콘을 클릭하여 '허용'으로 변경해주세요.");
             } else if (tokenOrStatus === null) {
                 throw new Error('알림 권한이 거부되었습니다.');
-            
-            } else {
-                // 4. (성공) FCM 토큰 등록
-                const token = tokenOrStatus;
-                await api.registerPushToken(token);
-                
-                // 5. ❗️ "각 개체마다 /notify_me를 보냄"
-                await toggleAllMachinesAPI(allToggles, true);
-                alert('전체 알림이 켜졌습니다.');
             }
+            const token = tokenOrStatus;
+            await api.registerPushToken(token);
+            
+            // 1-B. ❗️ [신규] "다 끄게 만들자"
+            // (중복 방지: 켜져 있는 '개별' 토글을 먼저 모두 끈다)
+            masterPushButton.textContent = '개별 알림 끄는 중...';
+            await turnOffAllIndividualToggles();
+            
+            // 1-C. '세탁실 알림' API 호출 (UI 변경 없음)
+            masterPushButton.textContent = '세탁실 알림 등록 중...';
+            const allToggles = document.querySelectorAll('.notify-me-toggle');
+            await subscribeAllMachinesAPI(allToggles, true); // true = 켜기
+            
+            alert('세탁실 알림이 등록되었습니다.\n(기존에 켜져있던 개별 알림은 모두 꺼졌습니다)');
 
-        } catch (error) {
-            alert(`전체 켜기 실패: ${error.message}`);
+        } else {
+            // --- [B] 끄기 로직 ---
+            masterPushButton.textContent = '세탁실 알림 취소 중...';
+            
+            // 2-A. '세탁실 알림' API 호출 (UI 변경 없음)
+            const allToggles = document.querySelectorAll('.notify-me-toggle');
+            await subscribeAllMachinesAPI(allToggles, false); // false = 끄기
+            
+            alert('세탁실 알림이 취소되었습니다.');
         }
-    } else {
-        // --- [B] 전체 끄기 로직 ---
-        masterPushButton.textContent = '끄는 중...';
-        try {
-            // 3. ❗️ "각 개체마다 /notify_me를 보냄" (끄기)
-            await toggleAllMachinesAPI(allToggles, false);
-            alert('전체 알림이 꺼졌습니다.');
-        } catch (error) {
-            alert(`전체 끄기 실패: ${error.message}`);
-        }
+
+        // --- [C] 성공 시 상태 저장 (공통) ---
+        isRoomSubscribed = targetState; 
+        localStorage.setItem(STORAGE_KEY, isRoomSubscribed); 
+        
+    } catch (error) {
+        alert(`처리 실패: ${error.message}`);
     }
     
-    // 4. 최종 버튼 텍스트 업데이트 및 버튼 활성화
-    updateMasterButtonText();
+    // 5. 최종 상태에 맞게 버튼 텍스트/활성화 복구
+    updateMasterButtonText(isRoomSubscribed);
     masterPushButton.disabled = false;
 }
 
 /**
- * ❗️ [신규] 모든 토글의 DOM을 업데이트하고 '각 개체마다' API를 병렬 호출
+ * ❗️ [신규] "다 끄게" 하는 헬퍼 (UI + API 모두 끔)
  */
-async function toggleAllMachinesAPI(toggles, shouldBeOn) {
+async function turnOffAllIndividualToggles() {
+    const checkedToggles = document.querySelectorAll('.notify-me-toggle:checked');
+    if (checkedToggles.length === 0) return; // 끈 게 없으면 스킵
+
+    console.log(`중복 방지: ${checkedToggles.length}개의 개별 알림을 끕니다.`);
+    
     const tasks = [];
-    for (const toggle of toggles) {
-        // 1. DOM(UI) 상태 변경
-        toggle.checked = shouldBeOn;
+    for (const toggle of checkedToggles) {
+        // 1. UI 끄기
+        toggle.checked = false; 
         
-        // 2. ❗️ '/notify_me 하나의 객체' API 호출
+        // 2. API 끄기
         const machineId = parseInt(toggle.dataset.machineId, 10);
         if (machineId) {
-            tasks.push(api.toggleNotifyMe(machineId, shouldBeOn));
+            tasks.push(api.toggleNotifyMe(machineId, false));
         }
     }
-    // 3. 모든 API 호출이 끝날 때까지 대기
     await Promise.all(tasks);
 }
 
 
 /**
- * ❗️ [신규] 현재 토글 상태를 읽어 마스터 버튼 텍스트를 업데이트
+ * ❗️ [수정] "세탁실 알림" 전용 헬퍼 (API만 호출, UI 안 건드림)
+ * (이 함수 이름은 헷갈리지 않게 변경합니다: subscribeAllMachinesAPI)
  */
-function updateMasterButtonText() {
-    if (!masterPushButton) return;
-
-    const allToggles = document.querySelectorAll('.notify-me-toggle');
-    const checkedToggles = document.querySelectorAll('.notify-me-toggle:checked');
-    
-    if (allToggles.length === 0) {
-        masterPushButton.textContent = '🔔 세탁실 알림 켜기'; // (기본값)
-        return;
+async function subscribeAllMachinesAPI(toggles, shouldBeOn) {
+    const tasks = [];
+    for (const toggle of toggles) {
+        // ❗️ [중요] 개별 토글 UI(toggle.checked)는 건드리지 않음
+        
+        const machineId = parseInt(toggle.dataset.machineId, 10);
+        if (machineId) {
+            tasks.push(api.toggleNotifyMe(machineId, shouldBeOn));
+        }
     }
-
-    // 절반 이하로 켜져 있으면 '켜기' 버튼 표시, 아니면 '끄기' 버튼 표시
-    const shouldTurnOn = (checkedToggles.length <= allToggles.length / 2);
-    masterPushButton.textContent = shouldTurnOn ? "🔔 전체 알림 켜기" : "🔕 전체 알림 끄기";
+    await Promise.all(tasks);
 }
 
+/**
+ * ❗️ [수정 없음] 버튼 텍스트 업데이트 헬퍼
+ */
+function updateMasterButtonText(isOn) {
+    if (!masterPushButton) return; // (안전장치)
+    
+    if (isOn) {
+        masterPushButton.textContent = "🔔 세탁실 알림 끄기";
+    } else {
+        masterPushButton.textContent = "🔔 세탁실 알림 받기";
+    }
+}
 
 /**
  * ❗️ [수정 없음] 권한 요청 및 FCM 토큰 발급 헬퍼
  */
 async function requestPermissionAndGetToken() {
-    
     if (Notification.permission === 'denied') {
         console.warn('알림 권한이 이미 \'차단\' 상태입니다.');
         return 'denied'; 
     }
-
     const permission = await Notification.requestPermission();
-    
     if (permission === 'granted') {
         const currentToken = await messaging.getToken();
         if (currentToken) {
-            console.log('FCM 토큰 획득:', currentToken);
             return currentToken; // 성공
         } else {
             throw new Error('FCM 토큰 발급에 실패했습니다.'); // 실패
