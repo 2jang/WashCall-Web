@@ -529,3 +529,38 @@ input:checked + .slider:before {
   -ms-transform: translateX(22px);
   transform: translateX(22px);
 }
+
+/* css/style.css 추가 */
+
+/* 세탁실 알림 받기 버튼 스타일 */
+.push-container {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    text-align: center; /* 버튼을 중앙에 배치 */
+}
+
+#room-subscribe-button {
+    background-color: #5cb85c; /* 초록색 (성공/알림 색상) */
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px; /* 둥근 모서리 */
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 그림자 효과 */
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    width: 80%; /* 컨테이너 너비에 맞춤 */
+    max-width: 400px; /* 너무 커지지 않도록 최대 너비 설정 */
+}
+
+#room-subscribe-button:hover {
+    background-color: #4cae4c; /* 호버 시 약간 어두워짐 */
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+#room-subscribe-button:disabled {
+    background-color: #cccccc; /* 비활성화 시 회색 */
+    cursor: not-allowed;
+    box-shadow: none;
+}
