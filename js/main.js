@@ -410,9 +410,14 @@ function translateStatus(status) {
     }
 }
 
-// [수정 없음] 타이머 표시 헬퍼 함수
+/**
+ * ❗️ [핵심 수정] 타이머 표시 헬퍼 함수
+ * (요청: 'SPINNING' (탈수)일 때만 타이머를 표시)
+ */
 function formatTimer(timerValue, status) {
-    if (status === 'WASHING' || status === 'SPINNING') {
+    
+    if (status === 'SPINNING') {
+        // 1. ❗️ '탈수' 상태일 때만 타이머 계산
         if (timerValue === null || timerValue === undefined) {
             return '시간 계산 중...'; 
         }
@@ -420,9 +425,17 @@ function formatTimer(timerValue, status) {
             return '마무리 중...'; 
         }
         return `약 ${timerValue}분 남음`;
+    
+    } else if (status === 'WASHING') {
+        // 2. ❗️ '세탁' 상태일 때는 타이머를 무시하고 고정 텍스트 표시
+        return '작동 중...'; 
+    
     } else if (status === 'FINISHED') {
+        // 3. 완료
         return '세탁 완료!';
+    
     } else { 
+        // 4. OFF (대기 중)
         return '대기 중';
     }
 }
