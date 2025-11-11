@@ -140,19 +140,33 @@ async function turnOffAllIndividualToggles() {
 
 
 /**
- * ❗️ [수정] "세탁실 알림" 전용 헬퍼 (API만 호출, UI 안 건드림)
- * (이 함수 이름은 헷갈리지 않게 변경합니다: subscribeAllMachinesAPI)
+ * ❗️ [핵심 수정] 모든 '세탁기'에 대해서만 API를 호출 (건조기 제외)
  */
 async function subscribeAllMachinesAPI(toggles, shouldBeOn) {
     const tasks = [];
-    for (const toggle of toggles) {
-        // ❗️ [중요] 개별 토글 UI(toggle.checked)는 건드리지 않음
-        
-        const machineId = parseInt(toggle.dataset.machineId, 10);
+    
+    // 1. ❗️ [수정] '.machine-type-washer' 클래스를 가진 '세탁기' 카드만 선택
+    //    (main.js의 renderMachines가 이 클래스를 추가함)
+    const washerCards = document.querySelectorAll('.machine-type-washer');
+    
+    const machineIds = new Set();
+
+    // 2. ❗️ 각 세탁기 카드에서 machine-id를 수집
+    washerCards.forEach(card => {
+        // (main.js가 card.id = `machine-${machine.machine_id}`로 설정함)
+        const machineId = parseInt(card.id.replace('machine-', ''), 10);
         if (machineId) {
-            tasks.push(api.toggleNotifyMe(machineId, shouldBeOn));
+            machineIds.add(machineId);
         }
+    });
+
+    // 3. ❗️ 수집된 '세탁기' ID(건조기 제외)에 대해서만 API 호출
+    console.log(`'빈자리 알림' ${shouldBeOn ? '켜기' : '끄기'}: ${machineIds.size}대의 '세탁기'를 대상으로 실행합니다.`);
+    
+    for (const machineId of machineIds) {
+        tasks.push(api.toggleNotifyMe(machineId, shouldBeOn));
     }
+
     await Promise.all(tasks);
 }
 
