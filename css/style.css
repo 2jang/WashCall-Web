@@ -646,3 +646,67 @@ input:checked + .slider:before {
 .course-buttons.show-courses {
     display: flex;
 }
+
+/* (css/style.css 파일 맨 아래에 추가) */
+
+/* --- 18. 신규 세탁 시작 버튼 (기존) --- */
+.notify-start-btn {
+    width: 100%;
+    padding: 12px 15px;
+    font-size: 1rem;
+    font-weight: 600;
+    background-color: #007bff; /* 파란색 (시작) */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 15px;
+}
+.notify-start-btn:hover { background-color: #0056b3; }
+.notify-start-btn:disabled { background-color: #6c757d; cursor: not-allowed; }
+
+
+/* ❗️ [수정] 코스 버튼 (기본 숨김 + 세로 정렬) */
+.course-buttons {
+    display: none; 
+    gap: 10px;
+    margin-top: 15px;
+    
+    /* ❗️ [신규] 세로 정렬 요청 */
+    flex-direction: column;
+}
+.course-buttons .course-btn {
+    width: 100%; /* 세로 정렬 시 꽉 차게 */
+    box-sizing: border-box; /* 패딩 포함 계산 */
+}
+
+/* ❗️ JS가 이 클래스를 추가하면 코스 버튼 보임 */
+.course-buttons.show-courses {
+    display: flex; /* ❗️ [수정] flex-direction이 적용되도록 block 대신 flex */
+}
+
+/* --- 19. (시나리오 B) 세탁 '중' 알림 받기 버튼 --- */
+.notify-me-during-wash-btn {
+    width: 100%;
+    padding: 12px 15px;
+    font-size: 1rem;
+    font-weight: 600;
+    
+    background-color: #5cb85c; /* 녹색 (구독) */
+    color: white;
+    
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 15px;
+}
+.notify-me-during-wash-btn:hover {
+    background-color: #4cae4c;
+}
+.notify-me-during-wash-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
