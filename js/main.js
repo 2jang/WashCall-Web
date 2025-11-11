@@ -146,8 +146,7 @@ async function handleSocketMessage(event) {
 
 
 /**
- * ❗️ [핵심 수정] updateMachineCard (사용자 요청 반영)
- * (A로 시작한 유저는 B 버튼이 보이지 않도록 수정)
+ * ❗️ [핵심 수정] updateMachineCard (타이머 숨김 로직 적용)
  */
 function updateMachineCard(machineId, newStatus, newTimer, isSubscribed) {
     const card = document.getElementById(`machine-${machineId}`);
@@ -161,11 +160,23 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed) {
         statusStrong.textContent = translateStatus(newStatus);
     }
 
+    // ❗️ [수정] 텍스트(span)뿐만 아니라 부모(div)도 찾음
+    const timerDiv = card.querySelector('.timer-display');
     const timerSpan = card.querySelector('.timer-display span');
-    if (timerSpan) {
-        timerSpan.textContent = formatTimer(newTimer, newStatus);
+
+    if (newStatus === 'SPINNING') {
+        // 1. ❗️ '탈수' 상태: DIV를 보여주고, 텍스트를 업데이트
+        if (timerDiv) timerDiv.style.display = 'block'; 
+        if (timerSpan) {
+            timerSpan.textContent = formatTimer(newTimer, newStatus);
+        }
+    } else {
+        // 2. ❗️ '세탁중', '완료', '대기' 상태: DIV를 아예 숨김
+        if (timerDiv) timerDiv.style.display = 'none';
     }
 
+
+    // [수정] 버튼 비활성화/숨김 로직
     const shouldBeDisabled = (newStatus === 'WASHING' || newStatus === 'SPINNING');
     
     const startButton = card.querySelector('.notify-start-btn');
@@ -179,16 +190,13 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed) {
         if (courseButtonsDiv) courseButtonsDiv.style.display = 'none'; 
         
         if (notifyMeButton) {
-            
-            // ❗️ [핵심] "세탁 중"이고 "아직 구독 안 한" 사용자에게만 B버튼 표시
             if (isSubscribed === false) { 
                 notifyMeButton.style.display = 'block'; 
                 notifyMeButton.textContent = '🔔 완료 알림 받기';
                 notifyMeButton.disabled = false;
             } 
-            // ❗️ "이미 구독한" 사용자(A로 시작) 또는 상태 불명확시
             else { 
-                notifyMeButton.style.display = 'none'; // ❗️ 버튼을 아예 숨김
+                notifyMeButton.style.display = 'none'; 
             }
         }
         
@@ -201,7 +209,6 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed) {
         }
         if (notifyMeButton) notifyMeButton.style.display = 'none'; 
         
-        // [버그 수정됨] 버튼 활성화 및 텍스트 리셋
         if (courseButtons) {
             courseButtons.forEach(btn => {
                 btn.disabled = false; 
@@ -211,7 +218,7 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed) {
     }
 }
 /**
- * ❗️ [수정] renderMachines (UI 변경)
+ * ❗️ [핵심 수정] renderMachines (타이머 숨김 로직 적용)
  */
 function renderMachines(machines) {
     const container = document.getElementById('machine-list-container');
@@ -224,8 +231,13 @@ function renderMachines(machines) {
         machineDiv.classList.add(`status-${machine.status.toLowerCase()}`);
         machineDiv.id = `machine-${machine.machine_id}`; 
         
-        const displayTimerText = formatTimer(machine.timer, machine.status);
-        
+        // ❗️ [수정] 'SPINNING' 상태인지 확인
+        const isSpinning = (machine.status === 'SPINNING');
+        // ❗️ 'SPINNING'이 아니면 'display: none' 스타일을 div에 직접 추가
+        const timerDivStyle = isSpinning ? '' : 'style="display: none;"';
+        // ❗️ 'SPINNING'일 때만 텍스트 계산
+        const displayTimerText = isSpinning ? formatTimer(machine.timer, machine.status) : '';
+
         const isDisabled = (machine.status === 'WASHING' || machine.status === 'SPINNING');
         const isSubscribed = (machine.isusing === 1);
         
@@ -241,7 +253,8 @@ function renderMachines(machines) {
             <div class="status-display">
                 상태: <strong id="status-${machine.machine_id}">${translateStatus(machine.status)}</strong>
             </div>
-            <div class="timer-display">
+            
+            <div class="timer-display" ${timerDivStyle}>
                 타이머: <span id="timer-${machine.machine_id}">${displayTimerText}</span>
             </div>
             
@@ -262,9 +275,9 @@ function renderMachines(machines) {
     });
 
     // 이벤트 리스너 연결
-    addNotifyStartLogic(); // (시나리오 A - 세탁 전)
-    addCourseButtonLogic(); // (시나리오 A - 세탁 전)
-    addNotifyMeDuringWashLogic(); // (시나리오 B - 세탁 중)
+    addNotifyStartLogic(); 
+    addCourseButtonLogic(); 
+    addNotifyMeDuringWashLogic(); 
 }
 
 /**
@@ -412,7 +425,7 @@ function translateStatus(status) {
 
 /**
  * ❗️ [핵심 수정] 타이머 표시 헬퍼 함수
- * (요청: 'SPINNING' (탈수)일 때만 타이머를 표시)
+ * (요청: 'SPINNING' (탈수)일 때만 텍스트를 반환)
  */
 function formatTimer(timerValue, status) {
     
@@ -426,16 +439,8 @@ function formatTimer(timerValue, status) {
         }
         return `약 ${timerValue}분 남음`;
     
-    } else if (status === 'WASHING') {
-        // 2. ❗️ '세탁' 상태일 때는 타이머를 무시하고 고정 텍스트 표시
-        return '작동 중...'; 
-    
-    } else if (status === 'FINISHED') {
-        // 3. 완료
-        return '세탁 완료!';
-    
-    } else { 
-        // 4. OFF (대기 중)
-        return '대기 중';
     }
+    
+    // 2. ❗️ 그 외 모든 상태는 빈 텍스트 반환 (어차피 DIV가 숨겨짐)
+    return ''; 
 }
