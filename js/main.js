@@ -146,8 +146,8 @@ async function handleSocketMessage(event) {
 
 
 /**
- * ❗️ [핵심 수정] updateMachineCard (활성화/내용 버그 수정)
- * (FINISHED 상태일 때 버튼 활성화(disabled=false) 및 텍스트를 리셋)
+ * ❗️ [핵심 수정] updateMachineCard (사용자 요청 반영)
+ * (A로 시작한 유저는 B 버튼이 보이지 않도록 수정)
  */
 function updateMachineCard(machineId, newStatus, newTimer, isSubscribed) {
     const card = document.getElementById(`machine-${machineId}`);
@@ -166,49 +166,46 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed) {
         timerSpan.textContent = formatTimer(newTimer, newStatus);
     }
 
-    // [수정] 버튼 비활성화/숨김 로직
     const shouldBeDisabled = (newStatus === 'WASHING' || newStatus === 'SPINNING');
     
-    // (시나리오 A 버튼)
     const startButton = card.querySelector('.notify-start-btn');
     const courseButtonsDiv = card.querySelector('.course-buttons');
-    // (시나리오 B 버튼)
     const notifyMeButton = card.querySelector('.notify-me-during-wash-btn');
-    
-    // ❗️ (버그 수정용) 코스 버튼 목록을 미리 찾아둠
     const courseButtons = card.querySelectorAll('.course-btn');
 
     if (shouldBeDisabled) {
-        // 1. 작동 중일 때 (시나리오 B)
+        // 1. 작동 중일 때 (시나리오 B 판단)
         if (startButton) startButton.style.display = 'none'; 
         if (courseButtonsDiv) courseButtonsDiv.style.display = 'none'; 
+        
         if (notifyMeButton) {
-            notifyMeButton.style.display = 'block'; 
-
-            if (isSubscribed === true) {
-                notifyMeButton.textContent = '✅ 알림 등록됨';
-                notifyMeButton.disabled = true;
-            } else if (isSubscribed === false) {
+            
+            // ❗️ [핵심] "세탁 중"이고 "아직 구독 안 한" 사용자에게만 B버튼 표시
+            if (isSubscribed === false) { 
+                notifyMeButton.style.display = 'block'; 
                 notifyMeButton.textContent = '🔔 완료 알림 받기';
                 notifyMeButton.disabled = false;
+            } 
+            // ❗️ "이미 구독한" 사용자(A로 시작) 또는 상태 불명확시
+            else { 
+                notifyMeButton.style.display = 'none'; // ❗️ 버튼을 아예 숨김
             }
         }
         
     } else {
-        // 2. 대기/완료 상태일 때 (시나리오 A)
+        // 2. 대기/완료 상태일 때 (시나리오 A 리셋)
         if (startButton) startButton.style.display = 'block'; 
         if (courseButtonsDiv) {
             courseButtonsDiv.classList.remove('show-courses'); 
-            courseButtonsDiv.style.display = ''; // (Error 3: 목록 안 뜸 해결)
+            courseButtonsDiv.style.display = ''; 
         }
         if (notifyMeButton) notifyMeButton.style.display = 'none'; 
         
-        // ❗️ [버그 수정] "활성화" 및 "내용" 리셋 (Error 1, 2 해결)
-        // (FINISHED/OFF가 되면 버튼 상태를 완전히 초기화)
+        // [버그 수정됨] 버튼 활성화 및 텍스트 리셋
         if (courseButtons) {
             courseButtons.forEach(btn => {
-                btn.disabled = false; // "활성화"
-                btn.textContent = btn.dataset.courseName; // "내용" (예: "✅ 알림 등록됨" -> "표준")
+                btn.disabled = false; 
+                btn.textContent = btn.dataset.courseName; 
             });
         }
     }
