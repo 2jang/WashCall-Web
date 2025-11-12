@@ -10,51 +10,85 @@
     
     <style>
         .survey-form {
-            background-color: #fff;
+            background-color: var(--bg-secondary-color);
             padding: 24px;
             border-radius: 8px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow);
         }
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
-        .form-group label { /* 질문 제목 ("1. [핵심 기능]...") */
+        .form-group label.question-title { /* 질문 제목 */
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             font-weight: 600;
             font-size: 1.1rem;
+            color: var(--text-color);
         }
-        .form-group .radio-group {
-            display: flex;
-            flex-wrap: wrap; /* 모바일에서 줄바꿈 허용 */
-            gap: 15px; /* 각 옵션(<label>) 사이의 간격 */
+
+        /* --- ❗️ [신규] 탭(버튼) 스타일 --- */
+        .radio-group {
+            display: grid;
+            /* 5개 버튼을 화면 크기에 맞춰 유연하게 배치 */
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 8px;
+            border-radius: 8px;
+            overflow: hidden; /* 모서리 */
+            border: 1px solid var(--border-color);
         }
         
-        /* ❗️ [수정] 라디오 버튼과 텍스트를 한 쌍으로 정렬 */
-        .form-group .radio-group label {
-            display: flex; /* 라벨을 flex 컨테이너로 만듭니다 */
-            align-items: center; /* 내부 항목(버튼, 텍스트)을 세로 중앙 정렬 */
-            gap: 5px; /* 라디오 버튼과 텍스트 사이의 간격 */
+        .radio-group input[type="radio"] {
+            /* 라디오 버튼 숨기기 */
+            display: none;
+        }
+
+        .radio-group label {
+            /* 텍스트/버튼 스타일 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 10px;
             
-            font-weight: 400; /* 옵션은 얇은 글씨로 */
-            font-size: 1rem;
-            margin-bottom: 0;
-            cursor: pointer; /* 라벨 전체에 클릭 커서 적용 */
-
-            /* ❗️ [핵심] 글씨가 깨지지 않도록 줄바꿈을 방지합니다 */
-            white-space: nowrap; 
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: var(--text-secondary-color);
+            
+            background-color: var(--bg-secondary-color);
+            border-left: 1px solid var(--border-color);
+            
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+            text-align: center;
+            white-space: nowrap;
         }
-        /* ❗️ [추가] 라디오 버튼 자체의 기본 마진 제거 */
-        .form-group .radio-group input[type="radio"] {
-            margin: 0;
+        
+        .radio-group label:first-of-type {
+             /* 맨 왼쪽 버튼 테두리 제거 */
+            border-left: none;
         }
-        /* ▲▲▲ [수정됨] 스타일 ▲▲▲ */
 
+        .radio-group label:hover {
+            background-color: var(--bg-color);
+        }
+
+        /* ❗️ [핵심] 선택된(checked) 라벨 스타일 */
+        .radio-group input[type="radio"]:checked + label {
+            background-color: var(--primary-color); /* (파란색) */
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 0 10px rgba(0,100,255, 0.3); /* 은은한 효과 */
+            border-color: var(--primary-color);
+        }
+        
+        /* 텍스트 입력 필드 (기존과 유사) */
         .form-group input[type="text"],
         .form-group textarea {
             width: 100%;
             padding: 12px;
-            border: 1px solid #ccc;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            color: var(--text-color);
             border-radius: 5px;
             font-size: 1rem;
             box-sizing: border-box;
@@ -62,17 +96,22 @@
             resize: vertical;
         }
         .form-group input[type="text"] {
-             min-height: auto; /* input[type="text"]는 min-height 제거 */
+             min-height: auto;
         }
+        
+        /* 제출 버튼 (기존과 동일) */
         .submit-btn {
             padding: 12px 20px;
             font-size: 1rem;
             font-weight: 600;
-            background-color: #007bff;
+            background-color: var(--primary-color);
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+        }
+        .submit-btn:hover {
+             background-color: var(--primary-hover-color);
         }
     </style>
 </head>
@@ -80,9 +119,10 @@
 
     <nav class="navbar">
         <a href="index.html" class="navbar-brand">WashCall</a>
+
         <button class="navbar-toggle" id="navbarToggle">
-            &#9776; 
-        </button>
+            &#9776; </button>
+        
         <ul class="navbar-nav" id="navbarMenu">
             <li><a href="index.html">실시간 현황</a></li>
             <li><a href="congestion.html">혼잡도 분석</a></li>
@@ -95,7 +135,6 @@
                     <span class="theme-slider"></span>
                 </label>
             </li>
-            
         </ul>
     </nav>
 
@@ -109,56 +148,92 @@
         <form id="survey-form" class="survey-form">
             
             <div class="form-group">
-                <label>1. [핵심 기능] 실시간 현황(상태)이 얼마나 정확했나요?</label>
+                <label class="question-title">1. [핵심 기능] 실시간 현황(상태)이 얼마나 정확했나요?</label>
                 <div class="radio-group">
-                    <label><input type="radio" name="status_accuracy" value="5" required> 매우 정확</label>
-                    <label><input type="radio" name="status_accuracy" value="4"> 대체로 정확</label>
-                    <label><input type="radio" name="status_accuracy" value="3"> 보통</label>
-                    <label><input type="radio" name="status_accuracy" value="2"> 가끔 틀림</label>
-                    <label><input type="radio" name="status_accuracy" value="1"> 자주 틀림</label>
+                    <input type="radio" name="status_accuracy" id="s1-5" value="5" required>
+                    <label for="s1-5">매우 정확</label>
+                    
+                    <input type="radio" name="status_accuracy" id="s1-4" value="4">
+                    <label for="s1-4">대체로 정확</label>
+                    
+                    <input type="radio" name="status_accuracy" id="s1-3" value="3">
+                    <label for="s1-3">보통</label>
+                    
+                    <input type="radio" name="status_accuracy" id="s1-2" value="2">
+                    <label for="s1-2">가끔 틀림</label>
+                    
+                    <input type="radio" name="status_accuracy" id="s1-1" value="1">
+                    <label for="s1-1">자주 틀림</label>
                 </div>
             </div>
 
             <div class="form-group">
-                <label>2. [핵심 기능] 세탁 잔여 시간(타이머)이 얼마나 정확했나요?</label>
+                <label class="question-title">2. [핵심 기능] 세탁 경과 시간이 얼마나 정확했나요?</label>
                 <div class="radio-group">
-                    <label><input type="radio" name="timer_accuracy" value="5" required> 매우 정확</label>
-                    <label><input type="radio" name="timer_accuracy" value="4"> 대체로 정확</label>
-                    <label><input type="radio" name="timer_accuracy" value="3"> 보통</label>
-                    <label><input type="radio" name="timer_accuracy" value="2"> 가끔 틀림</label>
-                    <label><input type="radio" name="timer_accuracy" value="1"> 자주 틀림</label>
+                    <input type="radio" name="timer_accuracy" id="s2-5" value="5" required>
+                    <label for="s2-5">매우 정확</label>
+                    
+                    <input type="radio" name="timer_accuracy" id="s2-4" value="4">
+                    <label for="s2-4">대체로 정확</label>
+                    
+                    <input type="radio" name="timer_accuracy" id="s2-3" value="3">
+                    <label for="s2-3">보통</label>
+                    
+                    <input type="radio" name="timer_accuracy" id="s2-2" value="2">
+                    <label for="s2-2">가끔 틀림</label>
+                    
+                    <input type="radio" name="timer_accuracy" id="s2-1" value="1">
+                    <label for="s2-1">자주 틀림</label>
                 </div>
             </div>
 
             <div class="form-group">
-                <label>3. [핵심 기능] 세탁 완료 알림은 제때 도착했나요?</label>
+                <label class="question-title">3. [핵심 기능] 세탁 완료 알림은 제때 도착했나요?</label>
                 <div class="radio-group">
-                    <label><input type="radio" name="timing" value="5" required> 매우 잘 맞음</label>
-                    <label><input type="radio" name="timing" value="4"> 잘 맞음</label>
-                    <label><input type="radio" name="timing" value="3"> 보통</label>
-                    <label><input type="radio" name="timing" value="2"> 조금 안 맞음</label>
-                    <label><input type="radio" name="timing" value="1"> 전혀 안 맞음/안 옴</label>
+                    <input type="radio" name="timing" id="s3-5" value="5" required>
+                    <label for="s3-5">매우 잘 맞음</label>
+                    
+                    <input type="radio" name="timing" id="s3-4" value="4">
+                    <label for="s3-4">잘 맞음</label>
+                    
+                    <input type="radio" name="timing" id="s3-3" value="3">
+                    <label for="s3-3">보통</label>
+                    
+                    <input type="radio" name="timing" id="s3-2" value="2">
+                    <label for="s3-2">조금 안 맞음</label>
+                    
+                    <input type="radio" name="timing" id="s3-1" value="1">
+                    <label for="s3-1">안 옴</label>
                 </div>
             </div>
             
             <div class="form-group">
-                <label for="survey-new-feature">4. [신규 기능] 가장 필요한 추가 기능은 무엇인가요?</label>
+                <label class="question-title" for="survey-new-feature">4. [신규 기능] 가장 필요한 추가 기능은 무엇인가요?</label>
                 <input type="text" id="survey-new-feature" name="new_feature" placeholder="예: 건조기 현황, 예약 기능, 고장 신고...">
             </div>
 
             <div class="form-group">
-                <label for="survey-suggestion">5. [정성 평가] 건의사항 및 버그 리포트</label>
+                <label class="question-title" for="survey-suggestion">5. [정성 평가] 건의사항 및 버그 리포트</label>
                 <textarea id="survey-suggestion" name="suggestion" placeholder="자유롭게 의견을 남겨주세요..."></textarea>
             </div>
 
             <div class="form-group">
-                <label>6. [종합 평가] 서비스에 전반적으로 만족하십니까?</label>
+                <label class="question-title">6. [종합 평가] 서비스에 전반적으로 만족하십니까?</label>
                 <div class="radio-group">
-                    <label><input type="radio" name="satisfaction" value="5" required> 매우 만족</label>
-                    <label><input type="radio" name="satisfaction" value="4"> 만족</label>
-                    <label><input type="radio" name="satisfaction" value="3"> 보통</label>
-                    <label><input type="radio" name="satisfaction" value="2"> 불만족</label>
-                    <label><input type="radio" name="satisfaction" value="1"> 매우 불만족</label>
+                    <input type="radio" name="satisfaction" id="s4-5" value="5" required>
+                    <label for="s4-5">매우 만족</label>
+                    
+                    <input type="radio" name="satisfaction" id="s4-4" value="4">
+                    <label for="s4-4">만족</label>
+                    
+                    <input type="radio" name="satisfaction" id="s4-3" value="3">
+                    <label for="s4-3">보통</label>
+                    
+                    <input type="radio" name="satisfaction" id="s4-2" value="2">
+                    <label for="s4-2">불만족</label>
+                    
+                    <input type="radio" name="satisfaction" id="s4-1" value="1">
+                    <label for="s4-1">매우 불만족</label>
                 </div>
             </div>
             
@@ -168,13 +243,9 @@
     </main>
 
     <script src="js/mock-data.js"></script>
-
     <script src="js/server-api.js"></script> 
-
     <script src="js/auth.js"></script> 
-
     <script src="js/survey.js"></script>
-
     <script src="js/navbar.js"></script>
 
     </body>
