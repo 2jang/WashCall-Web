@@ -474,18 +474,22 @@ function addCourseButtonLogic() {
                 // 4. 코스 시작 (서버에 코스 이름만 전송)
                 await api.startCourse(machineId, courseName); 
                 
-                console.log(`API: 코스 시작 및 알림 구독 성공 (서버가 /update를 보낼 때까지 대기)`);
+                console.log(`API: 코스 시작 및 알림 구독 성공`);
                 
-                // 5. ❗️ (수정) UI 즉시 변경 안 함
-                clickedBtn.textContent = '✅ 알림 등록됨';
-
                 alert(`${courseName} 코스 알림이 등록되었습니다.`);
+
+                // ❗️ [버그 수정]
+                // 성공했으므로, UI를 즉시 '작동 중'(Scenario B) 상태로 변경합니다.
+                // updateMachineCard(machineId, [새 상태], [타이머], [구독 여부])
+                updateMachineCard(machineId, 'WASHING', null, true);
+
 
             } catch (error) {
                 // 6. 실패 시 롤백
                 console.error("API: 코스 시작/알림 등록 실패:", error);
                 alert(`시작 실패: ${error.message}`);
                 
+                // (기존 롤백 로직은 그대로 둡니다)
                 allButtonsOnCard.forEach(btn => {
                     btn.disabled = false;
                     btn.textContent = btn.dataset.courseName; 

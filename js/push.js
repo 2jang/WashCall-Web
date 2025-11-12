@@ -1,5 +1,5 @@
 // js/push.js
-// ❗️ (중복 알림 방지: '세탁실'과 '개별'이 연동되는 최종본)
+// ❗️ (개별 알림 끄기 로직이 'main.js' 기준으로 수정된 최종본)
 
 // 1. Firebase 설정 (그대로)
  const firebaseConfig = {
@@ -79,17 +79,22 @@ async function onMasterSubscribeToggle() {
             const token = tokenOrStatus;
             await api.registerPushToken(token);
             
-            // 1-B. ❗️ [신규] "다 끄게 만들자"
-            // (중복 방지: 켜져 있는 '개별' 토글을 먼저 모두 끈다)
+            // 1-B. ❗️ [수정] "다 끄게 만들자"
+            // (main.js의 UI 구조에 맞춰 수정된 함수 호출)
             masterPushButton.textContent = '개별 알림 끄는 중...';
-            await turnOffAllIndividualToggles();
+            const turnedOffCount = await turnOffAllIndividualToggles(); // ❗️ [수정]
             
             // 1-C. '세탁실 알림' API 호출 (UI 변경 없음)
             masterPushButton.textContent = '세탁실 알림 등록 중...';
-            const allToggles = document.querySelectorAll('.notify-me-toggle');
+            const allToggles = document.querySelectorAll('.notify-me-toggle'); // (이 변수는 subscribeAllMachinesAPI에서만 사용)
             await subscribeAllMachinesAPI(allToggles, true); // true = 켜기
             
-            alert('세탁실 알림이 등록되었습니다.\n(기존에 켜져있던 개별 알림은 모두 꺼졌습니다)');
+            // ❗️ [수정] 팝업 메시지
+            if (turnedOffCount > 0) {
+                alert(`'빈자리 알림'이 등록되었습니다.\n\n켜져 있던 ${turnedOffCount}개의 개별 알림은 자동으로 꺼졌습니다.`);
+            } else {
+                alert("'빈자리 알림'이 등록되었습니다.");
+            }
 
         } else {
             // --- [B] 끄기 로직 ---
@@ -99,7 +104,7 @@ async function onMasterSubscribeToggle() {
             const allToggles = document.querySelectorAll('.notify-me-toggle');
             await subscribeAllMachinesAPI(allToggles, false); // false = 끄기
             
-            alert('세탁실 알림이 취소되었습니다.');
+            alert('빈자리 알림이 취소되었습니다.');
         }
 
         // --- [C] 성공 시 상태 저장 (공통) ---
@@ -116,26 +121,77 @@ async function onMasterSubscribeToggle() {
 }
 
 /**
- * ❗️ [신규] "다 끄게" 하는 헬퍼 (UI + API 모두 끔)
+ * ❗️ [핵심 수정] "다 끄게" 하는 헬퍼 (UI + API 모두 끔)
+ * (main.js의 '.notify-me-during-wash-btn'와 '.course-btn'을 대상으로 수정)
  */
 async function turnOffAllIndividualToggles() {
-    const checkedToggles = document.querySelectorAll('.notify-me-toggle:checked');
-    if (checkedToggles.length === 0) return; // 끈 게 없으면 스킵
-
-    console.log(`중복 방지: ${checkedToggles.length}개의 개별 알림을 끕니다.`);
+    // 1. main.js의 "작동 중" 알림 버튼 (시나리오 B) 중 등록된 버튼 찾기
+    const subscribedB_buttons = document.querySelectorAll(
+        '.notify-me-during-wash-btn:disabled'
+    );
     
+    // 2. main.js의 "코스 선택" 버튼 (시나리오 A) 중 등록된 버튼 찾기
+    const subscribedA_buttons = document.querySelectorAll(
+        '.course-btn:disabled'
+    );
+
     const tasks = [];
-    for (const toggle of checkedToggles) {
-        // 1. UI 끄기
-        toggle.checked = false; 
-        
-        // 2. API 끄기
-        const machineId = parseInt(toggle.dataset.machineId, 10);
-        if (machineId) {
-            tasks.push(api.toggleNotifyMe(machineId, false));
+    const uniqueMachineIds = new Set(); // ❗️ API 중복 호출 방지용
+
+    // 3. (시나리오 B) 작동 중 알림 끄기
+    for (const btn of subscribedB_buttons) {
+        // "✅ 알림 등록됨" 텍스트를 가진 버튼만 대상
+        if (btn.textContent.includes('✅ 알림 등록됨')) {
+            // 1. UI 끄기 (활성화)
+            btn.disabled = false;
+            btn.textContent = '🔔 완료 알림 받기'; 
+            
+            // 2. API 끄기
+            const machineId = parseInt(btn.dataset.machineId, 10);
+            if (machineId && !uniqueMachineIds.has(machineId)) {
+                tasks.push(api.toggleNotifyMe(machineId, false));
+                uniqueMachineIds.add(machineId);
+            }
         }
     }
+
+    // 4. (시나리오 A) 코스 알림 끄기
+    for (const btn of subscribedA_buttons) {
+        if (btn.textContent.includes('✅ 알림 등록됨')) {
+            const card = btn.closest('.machine-card');
+            if (!card) continue;
+
+            // 1. UI 끄기 (전체 롤백)
+            const allButtonsOnCard = card.querySelectorAll('.course-btn');
+            allButtonsOnCard.forEach(b => {
+                b.disabled = false;
+                b.textContent = b.dataset.courseName;
+            });
+            
+            const startButton = card.querySelector('.notify-start-btn');
+            if (startButton) startButton.style.display = 'block';
+            const courseButtonsDiv = card.querySelector('.course-buttons');
+            if (courseButtonsDiv) courseButtonsDiv.classList.remove('show-courses');
+
+            // 2. API 끄기
+            const machineId = parseInt(btn.dataset.machineId, 10);
+            if (machineId && !uniqueMachineIds.has(machineId)) {
+                tasks.push(api.toggleNotifyMe(machineId, false));
+                uniqueMachineIds.add(machineId);
+            }
+        }
+    }
+
+    if (tasks.length === 0) {
+        console.log('중복 방지: 꺼진 개별 알림이 없습니다. (스킵)');
+        return 0; // 끈 게 없으면 0 반환
+    }
+
+    console.log(`중복 방지: ${tasks.length}개의 개별 알림(A/B)을 끕니다.`);
+    
+    // 5. API 일괄 실행
     await Promise.all(tasks);
+    return tasks.length; // 꺼진 개수 반환
 }
 
 

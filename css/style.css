@@ -600,27 +600,46 @@ input:checked + .slider:before {
     line-height: 1; /* 아이콘이 텍스트 위로 뜨지 않도록 */
 }
 
-/* --- 17. 세탁실 알림 버튼 상태별 색상 (요청 2) --- */
+/* ❗️ [수정] '알림 받기' (꺼진 상태)일 때 (원래 녹색으로 복원) */
+#room-subscribe-button {
+    background-color: #5cb85c; /* ❗️ 원래 녹색으로 복원 */
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    width: 80%;
+    max-width: 400px;
+}
 
-/* ❗️ '알림 끄기' (구독 중, 켜진 상태)일 때 스타일 */
+#room-subscribe-button:hover {
+    background-color: #4cae4c; /* ❗️ 호버 시 어두운 녹색 */
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ❗️ '알림 끄기' (구독 중, 켜진 상태)일 때 스타일 (그대로 주황색) */
 #room-subscribe-button.subscribed {
-    background-color: #f0ad4e; /* 경고/활성 (주황색) */
+    background-color: #f0ad4e;
     border-color: #eea236;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 #room-subscribe-button.subscribed:hover {
-    background-color: #ec971f; /* 호버 시 더 진하게 */
+    background-color: #ec971f;
     box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* ❗️ '알림 받기' (꺼진 상태)일 때 (기존 녹색 스타일) */
-#room-subscribe-button {
-    /* (기존 스타일: #5cb85c 녹색) */
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+/* (비활성화는 회색 - 그대로) */
+#room-subscribe-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    box-shadow: none;
 }
 
-/* (css/style.css 파일 맨 아래에 추가) */
 
 /* --- 18. 신규 세탁 시작 버튼 (시나리오 A) --- */
 .notify-start-btn {
@@ -629,8 +648,8 @@ input:checked + .slider:before {
     font-size: 1rem;
     font-weight: 600;
     
-    /* ❗️ [수정] 파란색(#007bff) -> 녹색(#5cb85c) */
-    background-color: #5cb85c; 
+    /* ❗️ [수정] 녹색(#5cb85c) -> 찐한 파란색(#0064FF) */
+    background-color: #0064FF; 
     color: white;
     
     border: none;
@@ -640,7 +659,7 @@ input:checked + .slider:before {
     margin-top: 15px;
 }
 /* ❗️ [수정] 호버 색상 변경 */
-.notify-start-btn:hover { background-color: #4cae4c; }
+.notify-start-btn:hover { background-color: #0050CC; }
 .notify-start-btn:disabled { background-color: #6c757d; cursor: not-allowed; opacity: 0.8; }
 
 
@@ -651,7 +670,8 @@ input:checked + .slider:before {
     font-size: 1rem;
     font-weight: 600;
     
-    background-color: #5cb85c; /* (녹색으로 동일) */
+    /* ❗️ [수정] 녹색(#5cb85c) -> 찐한 파란색(#0064FF) */
+    background-color: #0064FF;
     color: white;
     
     border: none;
@@ -660,7 +680,8 @@ input:checked + .slider:before {
     transition: background-color 0.2s;
     margin-top: 15px;
 }
-.notify-me-during-wash-btn:hover { background-color: #4cae4c; }
+/* ❗️ [수정] 호버 색상 변경 */
+.notify-me-during-wash-btn:hover { background-color: #0050CC; }
 .notify-me-during-wash-btn:disabled { background-color: #6c757d; cursor: not-allowed; opacity: 0.8; }
 
 /* --- 21. 건조기 상태 (DRYING) 스타일 --- */
