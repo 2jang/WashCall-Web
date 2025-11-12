@@ -1,6 +1,53 @@
 /* css/style.css (파일 전체 덮어쓰기) */
 /* (모든 중복과 오류가 수정된 최종본) */
 
+/* css/style.css (맨 위에 추가) */
+
+/* --- 0. 색상 변수 정의 --- */
+:root {
+  /* 라이트 모드 (기본값) */
+  --bg-color: #f4f7f6;
+  --bg-secondary-color: #ffffff;
+  --text-color: #333;
+  --text-secondary-color: #555;
+  --border-color: #e0e0e0;
+  --card-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  --primary-color: #007bff;
+  --dryer-bg-color: #fffaf0; /* 건조기 카드 배경 */
+  
+  /* 상태별 색상 (라이트) */
+  --status-off-border: #6c757d;
+  --status-off-text: #6c757d;
+  --status-washing-border: #007bff;
+  --status-washing-text: #007bff;
+  --status-spinning-border: #ffc107;
+  --status-spinning-text: #d39e00;
+  --status-finished-border: #28a745;
+  --status-finished-text: #28a745;
+}
+
+body.dark-mode {
+  /* 다크 모드 */
+  --bg-color: #121212;
+  --bg-secondary-color: #1e1e1e;
+  --text-color: #e0e0e0;
+  --text-secondary-color: #b0b0b0;
+  --border-color: #333;
+  --card-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  --primary-color: #0084ff; /* 다크모드용 파란색 */
+  --dryer-bg-color: #2c251a; /* 어두운 건조기 카드 배경 */
+  
+  /* 상태별 색상 (다크) */
+  --status-off-border: #5a5a5a;
+  --status-off-text: #888;
+  --status-washing-border: #0084ff;
+  --status-washing-text: #0084ff;
+  --status-spinning-border: #ffc107;
+  --status-spinning-text: #ffc107;
+  --status-finished-border: #30c050;
+  --status-finished-text: #30c050;
+}
+
 /* --- 1. 기본 설정 --- */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -756,4 +803,98 @@ input:checked + .slider:before {
 }
 .timer-row.total-time span:last-child {
     color: #333; /* 검은색 */
+}
+
+/* css/style.css (맨 아래에 추가) */
+
+/* --- 24. 다크 모드 전환 스타일 --- */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.2s, color 0.2s;
+}
+.navbar, .machine-card, .auth-container, .survey-form,
+.push-container, .tip-container, .post-item, #post-detail,
+#comments-section {
+  background-color: var(--bg-secondary-color);
+  border-color: var(--border-color);
+  box-shadow: var(--card-shadow);
+}
+.navbar-brand { color: var(--primary-color); }
+.navbar-nav a { color: var(--text-secondary-color); }
+.machine-card h3, .auth-form h2, .main-header h2, .post-title,
+.detail-title, #comments-section h3 {
+  color: var(--text-color);
+}
+.status-display, .timer-display, .main-header p, .auth-toggle,
+.comment-text, .post-meta {
+  color: var(--text-secondary-color);
+}
+.machine-type-dryer { background-color: var(--dryer-bg-color); }
+.form-group input, .form-group textarea, .form-group select {
+  background-color: var(--bg-color);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+.tip-container {
+  color: var(--primary-color);
+  background-color: rgba(0, 123, 255, 0.1); /* 파란색 계열로 통일 */
+  border-color: rgba(0, 123, 255, 0.2);
+}
+
+/* 상태별 색상 적용 */
+.status-off { border-left-color: var(--status-off-border); opacity: 0.8; }
+.status-off .status-display strong { color: var(--status-off-text); }
+.status-washing { border-left-color: var(--status-washing-border); }
+.status-washing .status-display strong { color: var(--status-washing-text); }
+.status-spinning { border-left-color: var(--status-spinning-border); }
+.status-spinning .status-display strong { color: var(--status-spinning-text); }
+.status-drying { border-left-color: var(--status-spinning-border); }
+.status-drying .status-display strong { color: var(--status-spinning-text); }
+.status-finished { border-left-color: var(--status-finished-border); }
+.status-finished .status-display strong { color: var(--status-finished-text); }
+
+
+/* --- 25. 다크 모드 토글 스위치 --- */
+.theme-switch-wrapper {
+  display: flex;
+  align-items: center;
+  margin-left: 15px;
+}
+.theme-switch {
+  display: inline-block;
+  height: 24px;
+  position: relative;
+  width: 44px;
+}
+.theme-switch input {
+  display: none;
+}
+.theme-slider {
+  background-color: #ccc;
+  bottom: 0;
+  cursor: pointer;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: .4s;
+  border-radius: 24px;
+}
+.theme-slider:before {
+  background-color: #fff;
+  bottom: 3px;
+  content: "";
+  height: 18px;
+  left: 3px;
+  position: absolute;
+  transition: .4s;
+  width: 18px;
+  border-radius: 50%;
+}
+input:checked + .theme-slider {
+  background-color: var(--primary-color);
+}
+input:checked + .theme-slider:before {
+  transform: translateX(20px);
 }

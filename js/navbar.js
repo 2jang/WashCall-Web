@@ -32,3 +32,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// js/navbar.js (파일 맨 아래에 이어서 추가)
+
+// --- ❗️ [신규] 다크 모드 로직 ---
+document.addEventListener('DOMContentLoaded', () => {
+    // ... (기존 햄버거 메뉴 로직) ...
+
+    // --- 다크 모드 로직 시작 ---
+    const toggle = document.getElementById('theme-checkbox');
+    const storageKey = 'theme-preference';
+
+    // 1. 저장된 설정 또는 OS 설정 확인
+    const getPreferredTheme = () => {
+        const savedTheme = localStorage.getItem(storageKey);
+        if (savedTheme) {
+            return savedTheme;
+        }
+        // OS 설정 확인
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    };
+
+    let currentTheme = getPreferredTheme();
+
+    // 2. 현재 테마 적용
+    const applyTheme = (theme) => {
+        document.body.classList.toggle('dark-mode', theme === 'dark');
+        // 토글 버튼 상태도 동기화
+        if (toggle) {
+            toggle.checked = (theme === 'dark');
+        }
+    };
+
+    applyTheme(currentTheme);
+
+    // 3. 토글 클릭 이벤트
+    if (toggle) {
+        toggle.addEventListener('change', () => {
+            currentTheme = toggle.checked ? 'dark' : 'light';
+            applyTheme(currentTheme);
+            localStorage.setItem(storageKey, currentTheme);
+        });
+    }
+    // --- 다크 모드 로직 끝 ---
+});
