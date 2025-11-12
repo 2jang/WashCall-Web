@@ -1,7 +1,5 @@
 /* css/style.css (파일 전체 덮어쓰기) */
-/* (모든 중복과 오류가 수정된 최종본) */
-
-/* css/style.css (맨 위에 추가) */
+/* (다크 모드 및 색상 변수 적용 최종본) */
 
 /* --- 0. 색상 변수 정의 --- */
 :root {
@@ -12,8 +10,16 @@
   --text-secondary-color: #555;
   --border-color: #e0e0e0;
   --card-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  --primary-color: #007bff;
   --dryer-bg-color: #fffaf0; /* 건조기 카드 배경 */
+
+  /* 버튼 색상 */
+  --primary-color: #0064FF; /* 개별 카드 버튼 (파랑) */
+  --primary-hover-color: #0050CC;
+  --cta-color: #5cb85c; /* 빈자리 알림 버튼 (녹색) */
+  --cta-hover-color: #4cae4c;
+  --cta-subscribed-color: #f0ad4e; /* 빈자리 알림 (주황) */
+  --cta-subscribed-hover: #ec971f;
+  --btn-disabled-bg: #6c757d;
   
   /* 상태별 색상 (라이트) */
   --status-off-border: #6c757d;
@@ -34,9 +40,17 @@ body.dark-mode {
   --text-secondary-color: #b0b0b0;
   --border-color: #333;
   --card-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  --primary-color: #0084ff; /* 다크모드용 파란색 */
   --dryer-bg-color: #2c251a; /* 어두운 건조기 카드 배경 */
-  
+
+  /* 버튼 색상 (다크) */
+  --primary-color: #0084ff; /* 개별 카드 버튼 (밝은 파랑) */
+  --primary-hover-color: #0060C0;
+  --cta-color: #5cb85c; /* (유지) */
+  --cta-hover-color: #4cae4c;
+  --cta-subscribed-color: #f0ad4e; /* (유지) */
+  --cta-subscribed-hover: #ec971f;
+  --btn-disabled-bg: #444;
+
   /* 상태별 색상 (다크) */
   --status-off-border: #5a5a5a;
   --status-off-text: #888;
@@ -48,13 +62,15 @@ body.dark-mode {
   --status-finished-text: #30c050;
 }
 
+
 /* --- 1. 기본 설정 --- */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #f4f7f6;
+  background-color: var(--bg-color);
   margin: 0;
   padding-bottom: 50px;
-  color: #333;
+  color: var(--text-color);
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .container {
@@ -65,48 +81,48 @@ body {
 
 /* --- 2. 네비게이션 바 디자인 --- */
 .navbar {
-  background-color: #ffffff;
-  border-bottom: 1px solid #ddd;
+  background-color: var(--bg-secondary-color);
+  border-bottom: 1px solid var(--border-color);
   padding: 10px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: relative; /* 모바일 메뉴의 기준점이 됨 */
+  position: relative;
+  box-shadow: var(--card-shadow);
+  transition: background-color 0.2s, border-color 0.2s;
 }
 .navbar-brand {
   font-size: 1.5rem;
   font-weight: bold;
-  color: #007bff; /* 파란색 포인트 */
-
+  color: var(--primary-color);
   text-decoration: none;
+  transition: color 0.2s;
 }
-
-/* (데스크탑) 네비게이션 링크 */
 .navbar-nav {
   list-style: none;
   display: flex;
   margin: 0;
   padding: 0;
-
   z-index: 1000;
 }
 .navbar-nav li {
   margin-left: 20px;
+  display: flex;
+  align-items: center;
 }
 .navbar-nav a {
   text-decoration: none;
-  color: #555;
+  color: var(--text-secondary-color);
   font-weight: 500;
+  transition: color 0.2s;
 }
-
-/* (모바일) 햄버거 버튼 */
 .navbar-toggle {
-  display: none; /* 데스크탑에서는 숨김 */
+  display: none;
   background: none;
   border: none;
   font-size: 1.8rem;
   cursor: pointer;
-  color: #333;
+  color: var(--text-color);
 }
 
 /* --- 3. 메인 헤더 --- */
@@ -116,12 +132,12 @@ body {
 }
 .main-header h2 {
   font-size: 2rem;
-  color: #333;
+  color: var(--text-color);
   margin-bottom: 10px;
 }
 .main-header p {
   font-size: 1.1rem;
-  color: #666;
+  color: var(--text-secondary-color);
 }
 
 /* --- 4. 세탁기 리스트 컨테이너 --- */
@@ -133,69 +149,54 @@ body {
 
 /* --- 5. 세탁기 카드 디자인 --- */
 .machine-card {
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
+  background-color: var(--bg-secondary-color);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: var(--card-shadow);
   transition: all 0.3s ease;
   border-left: 5px solid #ccc;
 }
 .machine-card h3 {
   margin-top: 0;
-  color: #222;
+  color: var(--text-color);
 }
-.status-display, .timer-display {
+.status-display {
   font-size: 1rem;
-  color: #555;
-  margin-bottom: 15px;
+  color: var(--text-secondary-color);
+  margin-bottom: 5px;
 }
 .status-display strong {
   font-size: 1.1rem;
   font-weight: bold;
 }
 
-/* --- 6. 상태별 디자인 --- */
-.status-washing {
-  border-left-color: #007bff;
-}
-.status-washing .status-display strong {
-  color: #007bff;
-}
-.status-spinning {
-  border-left-color: #ffc107;
-  animation: shake 0.5s infinite;
-}
-.status-spinning .status-display strong {
-  color: #d39e00;
-}
-.status-finished {
-  border-left-color: #28a745;
-}
-.status-finished .status-display strong {
-  color: #28a745;
-}
-.status-off {
-  border-left-color: #6c757d;
-  opacity: 0.8;
-}
-.status-off .status-display strong {
-  color: #6c757d;
-}
+/* --- 6. 상태별 디자인 (변수 적용) --- */
+.status-off { border-left-color: var(--status-off-border); opacity: 0.8; }
+.status-off .status-display strong { color: var(--status-off-text); }
+.status-washing { border-left-color: var(--status-washing-border); }
+.status-washing .status-display strong { color: var(--status-washing-text); }
+.status-spinning { border-left-color: var(--status-spinning-border); animation: shake 0.5s infinite; }
+.status-spinning .status-display strong { color: var(--status-spinning-text); }
+.status-finished { border-left-color: var(--status-finished-border); }
+.status-finished .status-display strong { color: var(--status-finished-text); }
+.status-drying { border-left-color: var(--status-spinning-border); animation: shake 0.5s infinite; }
+.status-drying .status-display strong { color: var(--status-spinning-text); }
 
-/* ❗️ [수정] 7. 코스 버튼 디자인 (세로 정렬) */
+/* --- 7. 코스 버튼 디자인 (세로 정렬) --- */
 .course-buttons {
-  display: none; /* ❗️ 기본 숨김 */
-  flex-direction: column; /* ❗️ [핵심] 세로 정렬 */
+  display: none;
+  flex-direction: column;
   gap: 10px;
   margin-top: 15px;
 }
 .course-buttons .course-btn {
-    width: 100%; /* 세로 정렬 시 꽉 차게 */
-    box-sizing: border-box; /* 패딩 포함 계산 */
+    width: 100%;
+    box-sizing: border-box;
     flex-grow: 1;
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary-color);
     border-radius: 5px;
     padding: 10px 5px;
     font-size: 0.9rem;
@@ -203,11 +204,10 @@ body {
     transition: background-color 0.2s;
 }
 .course-buttons .course-btn:hover {
-    background-color: #e0e0e0;
+    background-color: var(--border-color);
 }
-/* ❗️ JS가 이 클래스를 추가하면 코스 버튼 보임 */
 .course-buttons.show-courses {
-    display: flex; /* ❗️ 'flex'를 사용해야 flex-direction: column이 적용됨 */
+    display: flex;
 }
 
 /* --- 8. (애니메이션) 덜덜 떠는 효과 --- */
@@ -215,43 +215,14 @@ body {
   0% { transform: translate(1px, 1px) rotate(0deg); }
   10% { transform: translate(-1px, -2px) rotate(-1deg); }
   20% { transform: translate(-1px, 0px) rotate(1deg); }
-  /* ... (나머지 애니메이션 프레임) ... */
+  30% { transform: translate(1px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+  50% { transform: translate(-1px, 2px) rotate(-1deg); }
+  60% { transform: translate(-1px, 1px) rotate(0deg); }
+  70% { transform: translate(1px, 1px) rotate(-1deg); }
+  80% { transform: translate(-1px, -1px) rotate(1deg); }
+  90% { transform: translate(1px, 2px) rotate(0deg); }
   100% { transform: translate(1px, -2px) rotate(-1deg); }
-}
-
-/* --- 10. 혼잡도 페이지 버튼 (congestion.html에서 이동) --- */
-.day-selector {
-  text-align: center;
-  margin-bottom: 20px;
-  
-  /* ❗️ [수정] 햄버거 메뉴를 위해 강제로 가로 스크롤 제거 */
-  overflow-x: hidden; 
-  white-space: normal; 
-  padding-bottom: 10px;
-  
-  /* 7개 버튼을 한 줄에 강제 배치하기 위한 속성 */
-  display: flex; 
-  justify-content: space-between;
-  align-items: center;
-}
-.day-btn {
-    padding: 8px 12px;
-    margin: 0 4px;
-    font-size: 1rem;
-    border: 1px solid #007bff;
-    background-color: #f0f0f0;
-    color: #007bff;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.day-btn:hover {
-    background-color: #e0e0e0;
-}
-.day-btn.active {
-    background-color: #007bff;
-    color: white;
-    font-weight: bold;
 }
 
 /* --- 9. 로그인 / 회원가입 폼 디자인 --- */
@@ -259,14 +230,14 @@ body {
   max-width: 450px;
   margin: 50px auto;
   padding: 30px;
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
+  background-color: var(--bg-secondary-color);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  box-shadow: var(--card-shadow);
 }
 .auth-form h2 {
   text-align: center;
-  color: #333;
+  color: var(--text-color);
   margin-bottom: 25px;
 }
 .form-group {
@@ -276,20 +247,22 @@ body {
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
-  color: #555;
+  color: var(--text-secondary-color);
 }
 .form-group input {
   width: 100%;
   padding: 12px;
   box-sizing: border-box; 
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-color);
+  color: var(--text-color);
   border-radius: 5px;
   font-size: 1rem;
 }
 .auth-button {
   width: 100%;
   padding: 12px;
-  background-color: #007bff;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   border-radius: 5px;
@@ -299,15 +272,15 @@ body {
   transition: background-color 0.2s;
 }
 .auth-button:hover {
-  background-color: #0056b3;
+  background-color: var(--primary-hover-color);
 }
 .auth-toggle {
   text-align: center;
   margin-top: 20px;
-  color: #666;
+  color: var(--text-secondary-color);
 }
 .auth-toggle a {
-  color: #007bff;
+  color: var(--primary-color);
   font-weight: 500;
   text-decoration: none;
 }
@@ -315,62 +288,86 @@ body {
   text-decoration: underline;
 }
 
+/* --- 10. 혼잡도 페이지 버튼 --- */
+.day-selector {
+  text-align: center;
+  margin-bottom: 20px;
+  overflow-x: hidden; 
+  white-space: normal; 
+  padding-bottom: 10px;
+  display: flex; 
+  justify-content: space-between;
+  align-items: center;
+}
+.day-btn {
+    padding: 8px 12px;
+    margin: 0 4px;
+    font-size: 1rem;
+    border: 1px solid var(--primary-color);
+    background-color: var(--bg-secondary-color);
+    color: var(--primary-color);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.day-btn:hover {
+    background-color: var(--border-color);
+}
+.day-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+}
+
 /* --- 11. 서베이 폼 컨테이너 --- */
-.survey-container {
-  max-width: 600px;
-  margin: 30px auto;
-  padding: 30px;
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
+.survey-form { /* survey.html */
+  background-color: var(--bg-secondary-color);
+  padding: 24px;
   border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  border: 1px solid var(--border-color);
 }
 .radio-group label {
-  display: block;
-  margin-bottom: 10px;
   font-weight: 400;
   cursor: pointer;
 }
 .radio-group input {
   margin-right: 10px;
 }
-.form-group textarea {
+.form-group textarea, .form-group select {
   width: 100%;
   padding: 12px;
   box-sizing: border-box; 
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-color);
+  color: var(--text-color);
   border-radius: 5px;
   font-size: 1rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   resize: vertical;
 }
+.submit-btn { /* survey.html */
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.submit-btn:hover {
+    background-color: var(--primary-hover-color);
+}
 
-/* --- 12. 푸시 알림 버튼 --- */
+
+/* --- 12. 푸시 알림 버튼 (사용 안함 - #room-subscribe-button으로 대체) --- */
 .push-container {
-  background-color: #fff;
+  background-color: var(--bg-secondary-color);
   padding: 15px 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: var(--card-shadow);
   margin-bottom: 20px;
   text-align: center;
-}
-#enable-push-button {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  padding: 12px 20px;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-#enable-push-button:hover {
-  background-color: #0056b3;
-}
-#enable-push-button:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
 }
 
 /* --- 13. 에러 메시지 스타일 --- */
@@ -383,122 +380,80 @@ body {
   margin-bottom: 15px;
   text-align: center;
   font-weight: 500;
-  display: none; /* 평소에는 숨겨둠 */
+  display: none;
 }
 
-/* --- 14. 모바일 반응형 (햄버거 버튼 + 비율 수정 - 통합본) --- */
+/* --- 14. 모바일 반응형 --- */
 @media (max-width: 768px) {
-  
-  /* 1. 햄버거 버튼 보이기 */
   .navbar-toggle {
-    display: block; /* 모바일에서 햄버거 버튼 보이기 */
+    display: block;
     z-index: 1001;
   }
-  
-  /* 2. 네비게이션 메뉴 (측면 슬라이드) */
   .navbar-nav {
     position: fixed; 
     top: 0;
-    right: 0; /* 오른쪽 기준으로 정렬 */
-    width: 250px; /* 메뉴의 너비 */
-    height: 100vh; /* 화면 전체 높이 */
-    z-index: 1000; /* ❗️ 메뉴가 본문 위에 오게 설정 */
-    
+    right: 0;
+    width: 250px;
+    height: 100vh;
+    z-index: 1000;
     display: flex; 
-    transform: translateX(100%); /* 100% 오른쪽으로 이동 (화면 밖) */
-    transition: transform 0.3s ease-in-out; /* 애니메이션 */
-
-    background-color: #ffffff; /* 배경색 */
-    flex-direction: column; /* 세로로 쌓기 */
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    background-color: var(--bg-secondary-color);
+    flex-direction: column;
     margin: 0;
-    padding: 20px 0 0 0; /* 위쪽 여백 */
-    box-shadow: -2px 0 8px rgba(0,0,0,0.15); /* 왼쪽 그림자 */
+    padding: 60px 0 0 0; /* 헤더 높이만큼 여백 */
+    box-shadow: -2px 0 8px rgba(0,0,0,0.15);
   }
-
-  /* 3. JS가 'active' 클래스를 추가하면 메뉴 보이기 */
   .navbar-nav.active {
-    transform: translateX(0%); /* 0% (원래 위치)로 슬라이드 */
+    transform: translateX(0%);
   }
-
-  /* 4. 모바일 메뉴 링크 스타일 */
   .navbar-nav li {
     margin-left: 0;
     width: 100%;
   }
   .navbar-nav a {
     display: block;
-    padding: 15px 25px; /* 좌우 여백 추가 */
-    border-bottom: 1px solid #f0f0f0;
-    color: #333; /* 글자색 진하게 */
-    font-weight: 500;
+    padding: 15px 25px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
   }
   .navbar-nav a:hover {
-    background-color: #f9f9f9;
+    background-color: var(--bg-color);
   }
-
-  /* 5. 로그인/서베이 폼 모바일 비율 수정 */
   .auth-container,
-  .survey-container {
+  .survey-form {
     margin-top: 20px;
     margin-bottom: 20px;
     padding: 20px; 
   }
-
-  /* 6. 혼잡도 페이지 모바일 UI 수정 */
   .day-selector {
-    text-align: center;
-    margin-bottom: 20px;
-    
-    /* ❗️ [수정] 스크롤 속성 제거 및 Flexbox 추가 */
-    overflow-x: hidden; /* 스크롤 방지 */
-    white-space: normal; /* 줄바꿈 허용 */
+    overflow-x: hidden;
+    white-space: normal;
     padding-bottom: 10px;
-    
-    /* 7개 버튼을 한 줄에 강제 배치하기 위한 속성 */
     display: flex; 
     justify-content: space-between;
     align-items: center;
   }
-  .day-selector::-webkit-scrollbar {
-    display: none; 
-  }
-
   .day-btn {
     flex: 1 1 0%; 
     min-width: 0;
-    margin: 0 2px; /* 버튼 간 좁은 여백만 남김 */
-    padding: 8px 0; /* 좌우 패딩을 0으로 줄여 공간 확보 */
-
-    /* (나머지 스타일은 그대로 유지) */
-    font-size: 0.9rem; /* 폰트를 조금 줄여 공간 확보 */
-    border: 1px solid #007bff;
-    background-color: #f0f0f0;
-    color: #007bff;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.2s
+    margin: 0 2px;
+    padding: 8px 0;
+    font-size: 0.9rem;
   }
-
-  /* ❗️ [수정] 그래프 가시성 수정 */
-  /* 'overflow-x: auto'와 'min-width: 700px'를 제거하여 */
-  /* 햄버거 메뉴와의 스크롤 충돌을 방지합니다. */
-  .chart-container {
-    padding-left: 0px; /* 꽉 차게 */
-    padding-right: 0px;
-    overflow-x: hidden; /* 가로 스크롤 금지 */
+  /* (다크 모드 토글 스위치 모바일 정렬) */
+  .theme-switch-wrapper {
+      padding: 10px 25px;
+      justify-content: space-between;
   }
-  
-  /* ❗️ [수정] 캔버스(그래프) 자체의 너비/높이 설정 */
-  #congestionChart {
-    min-width: unset; /* 최소 너비 제거 */
-    width: 100% !important; /* 부모(div) 너비에 꽉 맞춤 */
-    max-height: 400px; /* 모바일에서 너무 커지지 않게 */
+  .theme-switch-wrapper::before {
+      content: "다크 모드";
+      color: var(--text-color);
+      font-weight: 500;
   }
+}
 
-} /* ( @media 블록 닫는 괄호 ) */
-
-
-/* css/style.css (맨 아래에 추가) */
 /* --- 15. 서버 연결 상태 UI --- */
 .status-alert {
   padding: 15px;
@@ -506,150 +461,45 @@ body {
   text-align: center;
   font-weight: bold;
   margin-bottom: 20px;
-  opacity: 0; /* JS로 제어할 것이므로 기본은 숨김 */
+  opacity: 0;
   transition: opacity 0.3s ease-in-out;
 }
-
-/* 연결 성공 (SUCCESS) */
 .status-alert.success {
   background-color: #d4edda;
   color: #155724;
   border: 1px solid #c3e6cb;
 }
-
-/* 연결 끊김/오류 (ERROR) */
 .status-alert.error {
   background-color: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;
 }
 
-.notify-me-container {
-  display: flex;
-  align-items: center;
-  margin-top: 15px;
-  margin-bottom: 15px;
-}
-.notify-me-label {
-  margin-left: 10px;
-  font-size: 0.9rem;
-  color: #555;
-}
-
-/* The switch - a checkbox hidden */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 50px; /* 너비 수정 */
-  height: 28px; /* 높이 수정 */
-}
-.switch input { 
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-/* The slider */
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  -webkit-transition: .4s;
-  transition: .4s;
-  border-radius: 28px; /* 높이와 맞춤 */
-}
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 20px; /* 원 크기 */
-  width: 20px; /* 원 크기 */
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  -webkit-transition: .4s;
-  transition: .4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #007bff; /* 활성화 색상 */
-}
-input:checked + .slider:before {
-  -webkit-transform: translateX(22px); /* 이동 거리 */
-  -ms-transform: translateX(22px);
-  transform: translateX(22px);
-}
-
-/* css/style.css 추가 */
-
-/* 세탁실 알림 받기 버튼 스타일 */
-.push-container {
-    margin-top: 20px;
-    margin-bottom: 20px;
-    text-align: center; /* 버튼을 중앙에 배치 */
-}
-
-#room-subscribe-button {
-    background-color: #5cb85c; /* 초록색 (성공/알림 색상) */
-    color: white;
-    padding: 12px 25px;
-    border: none;
-    border-radius: 8px; /* 둥근 모서리 */
-    font-size: 1.1em;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 그림자 효과 */
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
-    width: 80%; /* 컨테이너 너비에 맞춤 */
-    max-width: 400px; /* 너무 커지지 않도록 최대 너비 설정 */
-}
-
-#room-subscribe-button:hover {
-    background-color: #4cae4c; /* 호버 시 약간 어두워짐 */
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-}
-
-#room-subscribe-button:disabled {
-    background-color: #cccccc; /* 비활성화 시 회색 */
-    cursor: not-allowed;
-    box-shadow: none;
-}
-
-/* --- 16. 혼잡도 팁 (아이디어 2) --- */
+/* --- 16. 혼잡도 팁 --- */
 .tip-container {
-    background-color: #e6f7ff; 
-    border: 1px solid #b3e0ff; 
+    background-color: rgba(0, 123, 255, 0.1);
+    border: 1px solid rgba(0, 123, 255, 0.2);
     border-radius: 8px;
     padding: 15px 20px;
     margin-bottom: 20px;
-    
     display: flex; 
-    align-items: flex-start; /* ❗️ [수정] center -> flex-start (아이콘 상단 정렬) */
+    align-items: flex-start;
     gap: 15px; 
-    
     font-size: 1rem;
-    color: #0056b3; 
+    color: var(--primary-color);
     line-height: 1.5;
-
-    /* ❗️ [신규] 줄바꿈(wrap)을 허용하고, 한국어 기준(공백)으로 단어 분리 */
     white-space: normal; 
     word-break: keep-all; 
 }
-
-/* 💡 아이콘을 위한 가상 요소 (CSS) */
 .tip-container::before {
-    content: '💡'; /* 전구 아이콘 */
+    content: '💡';
     font-size: 1.5rem;
-    line-height: 1; /* 아이콘이 텍스트 위로 뜨지 않도록 */
+    line-height: 1;
 }
 
-/* ❗️ [수정] '알림 받기' (꺼진 상태)일 때 (원래 녹색으로 복원) */
+/* --- 17. 빈자리 알림 버튼 (녹색/주황색) --- */
 #room-subscribe-button {
-    background-color: #5cb85c; /* ❗️ 원래 녹색으로 복원 */
+    background-color: var(--cta-color); /* 녹색 */
     color: white;
     padding: 12px 25px;
     border: none;
@@ -657,209 +507,94 @@ input:checked + .slider:before {
     font-size: 1.1em;
     font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--card-shadow);
     transition: background-color 0.3s ease, box-shadow 0.3s ease;
     width: 80%;
     max-width: 400px;
 }
-
 #room-subscribe-button:hover {
-    background-color: #4cae4c; /* ❗️ 호버 시 어두운 녹색 */
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+    background-color: var(--cta-hover-color); /* 어두운 녹색 */
 }
-
-/* ❗️ '알림 끄기' (구독 중, 켜진 상태)일 때 스타일 (그대로 주황색) */
 #room-subscribe-button.subscribed {
-    background-color: #f0ad4e;
-    border-color: #eea236;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background-color: var(--cta-subscribed-color); /* 주황색 */
 }
-
 #room-subscribe-button.subscribed:hover {
-    background-color: #ec971f;
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+    background-color: var(--cta-subscribed-hover); /* 어두운 주황색 */
 }
-
-/* (비활성화는 회색 - 그대로) */
 #room-subscribe-button:disabled {
-    background-color: #cccccc;
+    background-color: var(--btn-disabled-bg);
     cursor: not-allowed;
     box-shadow: none;
 }
 
-
-/* --- 18. 신규 세탁 시작 버튼 (시나리오 A) --- */
-.notify-start-btn {
-    width: 100%;
-    padding: 12px 15px;
-    font-size: 1rem;
-    font-weight: 600;
-    
-    /* ❗️ [수정] 녹색(#5cb85c) -> 찐한 파란색(#0064FF) */
-    background-color: #0064FF; 
-    color: white;
-    
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    margin-top: 15px;
-}
-/* ❗️ [수정] 호버 색상 변경 */
-.notify-start-btn:hover { background-color: #0050CC; }
-.notify-start-btn:disabled { background-color: #6c757d; cursor: not-allowed; opacity: 0.8; }
-
-
-/* --- 19. (시나리오 B) 세탁 '중' 알림 받기 버튼 --- */
+/* --- 18 & 19. 개별 카드 알림 버튼 (파란색) --- */
+.notify-start-btn,
 .notify-me-during-wash-btn {
     width: 100%;
     padding: 12px 15px;
     font-size: 1rem;
     font-weight: 600;
-    
-    /* ❗️ [수정] 녹색(#5cb85c) -> 찐한 파란색(#0064FF) */
-    background-color: #0064FF;
+    background-color: var(--primary-color); /* 파란색 */
     color: white;
-    
     border: none;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.2s;
     margin-top: 15px;
 }
-/* ❗️ [수정] 호버 색상 변경 */
-.notify-me-during-wash-btn:hover { background-color: #0050CC; }
-.notify-me-during-wash-btn:disabled { background-color: #6c757d; cursor: not-allowed; opacity: 0.8; }
-
-/* --- 21. 건조기 상태 (DRYING) 스타일 --- */
-.status-drying {
-    /* (탈수와 유사하게 주황색 테두리) */
-    border-left-color: #ffc107; 
+.notify-start-btn:hover,
+.notify-me-during-wash-btn:hover {
+    background-color: var(--primary-hover-color); /* 어두운 파란색 */
 }
-.status-drying .status-display strong {
-    color: #d39e00;
+.notify-start-btn:disabled,
+.notify-me-during-wash-btn:disabled {
+    background-color: var(--btn-disabled-bg);
+    cursor: not-allowed;
+    opacity: 0.8;
 }
 
-/* (선택 사항) 건조 중 애니메이션 (탈수와 공유) */
-.status-drying {
-    animation: shake 0.5s infinite;
-}
-
-/* (css/style.css 파일 맨 아래에 추가) */
-
-/* --- 22. 세탁기/건조기 가독성 향상 (배경색) --- */
-
-/* 세탁기는 기존 흰색 배경 유지 */
-.machine-type-washer {
-    background-color: #ffffff;
-}
-
-/* ❗️ 건조기 카드 (배경색 구분) */
+/* --- 21. 건조기 상태 (DRYING) --- */
 .machine-type-dryer {
-    background-color: #fffaf0; /* 옅은 주황색/노란색 (Floral White) */
-    border-color: #f7e8d6; /* 테두리 색상도 살짝 변경 */
+    background-color: var(--dryer-bg-color);
+    border-color: var(--border-color);
 }
-
-/* css/style.css (맨 아래에 추가) */
 
 /* --- 23. 신규 타이머 UI 스타일 (남은 시간 제거) --- */
 .timer-display {
     font-size: 0.95rem;
-    color: #333;
-    background-color: #f9f9f9;
+    color: var(--text-secondary-color);
+    background-color: var(--bg-color); /* 카드 배경보다 한 톤 밝게/어둡게 */
     border-radius: 5px;
     padding: 10px;
-    border: 1px solid #eee;
+    border: 1px solid var(--border-color);
     margin-top: 10px; 
 }
-
-/* (기존) 상태 표시는 타이머와 분리 */
-.status-display {
-    font-size: 1rem;
-    color: #555;
-    margin-bottom: 5px; 
-}
-
 .timer-row {
     display: flex;
     justify-content: space-between;
     line-height: 1.6;
 }
-
 .timer-row span:first-child {
     font-weight: 500;
-    color: #555; /* 레이블 색상 */
+    color: var(--text-secondary-color);
 }
-
 .timer-row span:last-child {
     font-weight: bold;
-    color: #007bff; /* 파란색 (경과 시간) */
+    color: var(--primary-color); /* 경과 시간 */
 }
-
-/* (총 예상 시간) 스타일 */
 .timer-row.total-time {
-    font-size: 1.05rem; /* 총 시간은 조금 크게 */
-    margin-bottom: 4px; /* 경과 시간과의 여백 */
+    font-size: 1.05rem;
+    margin-bottom: 4px;
 }
 .timer-row.total-time span:last-child {
-    color: #333; /* 검은색 */
+    color: var(--text-color); /* 총 시간 */
 }
-
-/* css/style.css (맨 아래에 추가) */
-
-/* --- 24. 다크 모드 전환 스타일 --- */
-body {
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  transition: background-color 0.2s, color 0.2s;
-}
-.navbar, .machine-card, .auth-container, .survey-form,
-.push-container, .tip-container, .post-item, #post-detail,
-#comments-section {
-  background-color: var(--bg-secondary-color);
-  border-color: var(--border-color);
-  box-shadow: var(--card-shadow);
-}
-.navbar-brand { color: var(--primary-color); }
-.navbar-nav a { color: var(--text-secondary-color); }
-.machine-card h3, .auth-form h2, .main-header h2, .post-title,
-.detail-title, #comments-section h3 {
-  color: var(--text-color);
-}
-.status-display, .timer-display, .main-header p, .auth-toggle,
-.comment-text, .post-meta {
-  color: var(--text-secondary-color);
-}
-.machine-type-dryer { background-color: var(--dryer-bg-color); }
-.form-group input, .form-group textarea, .form-group select {
-  background-color: var(--bg-color);
-  border-color: var(--border-color);
-  color: var(--text-color);
-}
-.tip-container {
-  color: var(--primary-color);
-  background-color: rgba(0, 123, 255, 0.1); /* 파란색 계열로 통일 */
-  border-color: rgba(0, 123, 255, 0.2);
-}
-
-/* 상태별 색상 적용 */
-.status-off { border-left-color: var(--status-off-border); opacity: 0.8; }
-.status-off .status-display strong { color: var(--status-off-text); }
-.status-washing { border-left-color: var(--status-washing-border); }
-.status-washing .status-display strong { color: var(--status-washing-text); }
-.status-spinning { border-left-color: var(--status-spinning-border); }
-.status-spinning .status-display strong { color: var(--status-spinning-text); }
-.status-drying { border-left-color: var(--status-spinning-border); }
-.status-drying .status-display strong { color: var(--status-spinning-text); }
-.status-finished { border-left-color: var(--status-finished-border); }
-.status-finished .status-display strong { color: var(--status-finished-text); }
-
 
 /* --- 25. 다크 모드 토글 스위치 --- */
 .theme-switch-wrapper {
   display: flex;
   align-items: center;
-  margin-left: 15px;
+  margin-left: 20px;
 }
 .theme-switch {
   display: inline-block;
@@ -894,6 +629,9 @@ body {
 }
 input:checked + .theme-slider {
   background-color: var(--primary-color);
+}
+body.dark-mode input:checked + .theme-slider {
+  background-color: var(--status-finished-text); /* 다크모드일땐 녹색 */
 }
 input:checked + .theme-slider:before {
   transform: translateX(20px);
