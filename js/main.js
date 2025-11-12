@@ -1,5 +1,5 @@
 // js/main.js
-// ❗️ (모든 버그가 수정된 최종본)
+// ❗️ (건조기 '알림 받고 시작' 버튼 표시 버그가 수정된 최종본)
 
 let connectionStatusElement;
 
@@ -210,8 +210,12 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed) {
         
     } else {
         // 2. 대기/완료 상태일 때 (시나리오 A 리셋)
+        
+        // ❗️ [버그 수정] 시작 버튼은 세탁기/건조기 모두 'block'으로 설정
+        if (startButton) startButton.style.display = 'block'; 
+
         if (machineType === 'washer') {
-            if (startButton) startButton.style.display = 'block'; 
+             // (코스 버튼은 세탁기만 보임)
             if (courseButtonsDiv) {
                 courseButtonsDiv.classList.remove('show-courses'); 
                 courseButtonsDiv.style.display = ''; 
@@ -223,7 +227,7 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed) {
                 });
             }
         } else {
-            if (startButton) startButton.style.display = 'none'; 
+             // (건조기는 코스 버튼 숨김)
             if (courseButtonsDiv) courseButtonsDiv.style.display = 'none'; 
         }
         
@@ -261,9 +265,10 @@ function renderMachines(machines) {
         const scenarioB_DisabledAttr = isSubscribed ? 'disabled' : '';
         const scenarioB_Text = isSubscribed ? '✅ 알림 등록됨' : '🔔 완료 알림 받기';
 
-        // ❗️ [버그 수정] A/B 버튼 보임/숨김 로직
-        const showScenario_A = (!isDisabled && machineType === 'washer'); // (A는 세탁기+OFF일때만)
-        const showScenario_B = (isDisabled); // ❗️ (B는 작동 중이면 '항상' 렌더링)
+        // ❗️ [버그 수정] 로직 분리
+        const showScenario_B = (isDisabled); // (B) 작동 중 버튼
+        const showStartButton = (!isDisabled); // (A) 시작 버튼 (세탁기/건조기 모두)
+        const showCourseButtons = (!isDisabled && machineType === 'washer'); // (A) 코스 버튼 (세탁기만)
 
         const machineDisplayName = machine.machine_name || `기기 ${machine.machine_id}`;
         
@@ -277,10 +282,10 @@ function renderMachines(machines) {
                 타이머: <span id="timer-${machine.machine_id}">${displayTimerText}</span>
             </div>
             
-            <button class="notify-start-btn" data-machine-id="${machine.machine_id}" ${showScenario_A ? '' : 'style="display: none;"'}>
+            <button class="notify-start-btn" data-machine-id="${machine.machine_id}" ${showStartButton ? '' : 'style="display: none;"'}>
                 🔔 알림 받고 시작
             </button>
-            <div class="course-buttons" ${showScenario_A ? '' : 'style="display: none;"'}>
+            <div class="course-buttons" ${showCourseButtons ? '' : 'style="display: none;"'}>
                 <button class="course-btn" data-machine-id="${machine.machine_id}" data-course-name="표준">표준</button>
                 <button class="course-btn" data-machine-id="${machine.machine_id}" data-course-name="강력">강력</button>
                 <button class="course-btn" data-machine-id="${machine.machine_id}" data-course-name="쾌속">쾌속</button>
@@ -308,14 +313,99 @@ function addNotifyStartLogic() {
             const btn = event.target;
             const card = btn.closest('.machine-card');
             if (!card) return;
-            const courseButtonsDiv = card.querySelector('.course-buttons');
+
+            // ❗️ [버그 수정] 건조기/세탁기 구분
+            const machineType = card.dataset.machineType || 'washer';
             
-            if (courseButtonsDiv) {
-                courseButtonsDiv.classList.add('show-courses');
+            if (machineType === 'washer') {
+                // 세탁기: 코스 버튼 표시
+                const courseButtonsDiv = card.querySelector('.course-buttons');
+                if (courseButtonsDiv) {
+                    courseButtonsDiv.classList.add('show-courses');
+                }
+                btn.style.display = 'none'; 
+            } else {
+                // 건조기: 즉시 알림 등록 로직 실행 (addCourseButtonLogic의 로직을 차용)
+                handleDryerStart(btn, card);
             }
-            btn.style.display = 'none'; 
         });
     });
+}
+
+/**
+ * ❗️ [신규] 건조기 "알림 받고 시작" 버튼 클릭 시 실행되는 함수
+ */
+async function handleDryerStart(clickedBtn, card) {
+    const machineId = parseInt(clickedBtn.dataset.machineId, 10);
+    if (!machineId) return;
+
+    clickedBtn.disabled = true;
+    clickedBtn.textContent = "요청 중...";
+
+    try {
+        // ❗️ '빈자리 알림' (마스터 버튼) 끄기 (세탁기와 동일한 로직)
+        const roomSubState = localStorage.getItem('washcallRoomSubState');
+        if (roomSubState === 'true') {
+            console.log("중복 방지: '빈자리 알림'을 끕니다.");
+            
+            // 1. API 끄기 (모든 세탁기)
+            const washerCards = document.querySelectorAll('.machine-type-washer');
+            const tasks = [];
+            washerCards.forEach(card => {
+                const mid = parseInt(card.id.replace('machine-', ''), 10);
+                if(mid) tasks.push(api.toggleNotifyMe(mid, false));
+            });
+            await Promise.all(tasks);
+            
+            // 2. localStorage 끄기
+            localStorage.setItem('washcallRoomSubState', 'false');
+            
+            // 3. 마스터 버튼 UI 끄기
+            const masterBtn = document.getElementById('room-subscribe-button');
+            if (masterBtn) {
+                masterBtn.textContent = "🔔 빈자리 알림 받기";
+                masterBtn.classList.remove('subscribed'); 
+            }
+            
+            alert("'빈자리 알림'이 꺼지고, '개별 알림'이 켜집니다.");
+        }
+
+        // 2. FCM 토큰 발급 (push.js 함수 호출)
+        const tokenOrStatus = await requestPermissionAndGetToken();
+        if (tokenOrStatus === 'denied') {
+            throw new Error("알림이 '차단' 상태입니다. 🔒 아이콘을 클릭하여 '허용'으로 변경해주세요.");
+        } else if (tokenOrStatus === null) {
+            throw new Error('알림 권한이 거부되었습니다.'); 
+        }
+        
+        // 3. 토큰 등록 및 알림 구독
+        const token = tokenOrStatus;
+        await api.registerPushToken(token); 
+        await api.toggleNotifyMe(machineId, true); 
+        
+        // 4. ❗️ 건조기는 "코스"가 없으므로 서버에 '시작'만 알림 (코스 이름으로 'DRYER' 전송)
+        // (서버 `start_course`는 코스 이름만 받고 상태는 변경하지 않으므로 안전함)
+        await api.startCourse(machineId, 'DRYER'); // 또는 적절한 기본값
+        
+        console.log(`API: 건조기 시작 및 알림 구독 성공`);
+        
+        // 5. ❗️ [버그 수정] 상태(DRYING) 변경 호출 제거
+        // updateMachineCard(machineId, 'DRYING', null, true); // <-- 이 줄을 삭제합니다.
+        
+        // ❗️ [수정] 대신 버튼 텍스트만 '알림 등록됨'으로 변경합니다.
+        clickedBtn.textContent = '✅ 알림 등록됨';
+        // (disabled=true 상태는 try 블록 시작에서 이미 설정됨)
+        
+        alert(`건조기 알림이 등록되었습니다.`);
+
+    } catch (error) {
+        // 6. 실패 시 롤백
+        console.error("API: 건조기 시작/알림 등록 실패:", error);
+        alert(`시작 실패: ${error.message}`);
+        
+        clickedBtn.disabled = false;
+        clickedBtn.textContent = '🔔 알림 받고 시작';
+    }
 }
 
 
