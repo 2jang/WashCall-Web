@@ -1,5 +1,5 @@
 // js/main.js
-// ❗️ (새로고침 시 구독 상태 UI 유지 버그 수정)
+// ❗️ (새로고침 버그 수정 + ❗️ 알림 받기 속도 개선)
 
 let connectionStatusElement;
 
@@ -372,7 +372,7 @@ function addNotifyStartLogic() {
 }
 
 /**
- * 건조기 시작 로직 (그대로)
+ * ❗️ [수정] 건조기 시작 로직 (속도 개선)
  */
 async function handleDryerStart(clickedBtn, card) {
     const machineId = parseInt(clickedBtn.dataset.machineId, 10);
@@ -392,14 +392,14 @@ async function handleDryerStart(clickedBtn, card) {
                 const mid = parseInt(card.id.replace('machine-', ''), 10);
                 if(mid) tasks.push(api.toggleNotifyMe(mid, false));
             });
-            await Promise.all(tasks);
+            await Promise.all(tasks); // ❗️ 병목 지점 1
             localStorage.setItem('washcallRoomSubState', 'false');
             const masterBtn = document.getElementById('room-subscribe-button');
             if (masterBtn) {
                 masterBtn.textContent = "🔔 빈자리 알림 받기";
                 masterBtn.classList.remove('subscribed'); 
             }
-            alert("'빈자리 알림'이 꺼지고, '개별 알림'이 켜집니다.");
+            alert("'빈자리 알림'이 꺼지고, '개별 알림'이 켜집니다."); // ❗️ (이 alert는 유지 - 중요 공지이므로)
         }
 
         // ... (FCM 토큰 발급 - 이전과 동일) ...
@@ -410,24 +410,28 @@ async function handleDryerStart(clickedBtn, card) {
             throw new Error('알림 권한이 거부되었습니다.'); 
         }
         
-        // ... (알림 구독 및 코스 시작 - 이전과 동일) ...
         const token = tokenOrStatus;
-        await api.registerPushToken(token); 
-        await api.toggleNotifyMe(machineId, true); // ❗️ [1] 구독
-        await api.startCourse(machineId, 'DRYER');  // ❗️ [2] 시작 (실패 시 catch로)
+
+        // ❗️ [수정] 3개의 API를 병렬(동시)로 처리하여 속도 개선
+        await Promise.all([
+            api.registerPushToken(token),
+            api.toggleNotifyMe(machineId, true),
+            api.startCourse(machineId, 'DRYER')
+        ]);
         
-        console.log(`API: 건조기 시작 및 알림 구독 성공`);
+        console.log(`API: 건조기 시작 및 알림 구독 성공 (병렬 처리)`);
         
-        // ❗️ [수정] 상태 강제 변경(updateMachineCard) 제거, 수동 UI 전환
-        clickedBtn.style.display = 'none'; // A 버튼 숨기기
+        // ❗️ [수정] alert() 제거
+        // alert(`건조기 알림이 등록되었습니다.`);
+        
+        // (수동 UI 전환)
+        clickedBtn.style.display = 'none'; 
         const notifyMeButton = card.querySelector('.notify-me-during-wash-btn');
-        if (notifyMeButton) { // B 버튼 표시
+        if (notifyMeButton) { 
             notifyMeButton.style.display = 'block';
             notifyMeButton.textContent = '✅ 알림 등록됨';
             notifyMeButton.disabled = true;
         }
-        
-        alert(`건조기 알림이 등록되었습니다.`);
 
     } catch (error) {
         // ... (실패 시 롤백 로직 - 이전과 동일) ...
@@ -446,7 +450,7 @@ async function handleDryerStart(clickedBtn, card) {
 
 
 /**
- * ❗️ [수정] 코스 버튼 로직 (UI 강제 변경 버그 수정)
+ * ❗️ [수정] 코스 버튼 로직 (속도 개선)
  */
 function addCourseButtonLogic() {
     document.querySelectorAll('.course-btn').forEach(clickedBtn => {
@@ -479,14 +483,14 @@ function addCourseButtonLogic() {
                         const mid = parseInt(card.id.replace('machine-', ''), 10);
                         if(mid) tasks.push(api.toggleNotifyMe(mid, false));
                     });
-                    await Promise.all(tasks);
+                    await Promise.all(tasks); // ❗️ 병목 지점 1
                     localStorage.setItem('washcallRoomSubState', 'false');
                     const masterBtn = document.getElementById('room-subscribe-button');
                     if (masterBtn) {
                         masterBtn.textContent = "🔔 빈자리 알림 받기";
                         masterBtn.classList.remove('subscribed'); 
                     }
-                    alert("'빈자리 알림'이 꺼지고, '개별 알림'이 켜집니다.");
+                    alert("'빈자리 알림'이 꺼지고, '개별 알림'이 켜집니다."); // ❗️ (이 alert는 유지)
                 }
 
                 // ... (FCM 토큰 발급 - 이전과 동일) ...
@@ -497,30 +501,29 @@ function addCourseButtonLogic() {
                     throw new Error('알림 권한이 거부되었습니다.'); 
                 }
                 
-                // ... (알림 구독 및 코스 시작) ...
                 const token = tokenOrStatus;
-                await api.registerPushToken(token); 
-                await api.toggleNotifyMe(machineId, true); // ❗️ [1] 구독
-                await api.startCourse(machineId, courseName); // ❗️ [2] 시작 (실패 시 catch로)
-                
-                console.log(`API: 코스 시작 및 알림 구독 성공`);
-                
-                alert(`${courseName} 코스 알림이 등록되었습니다.`);
 
-                // ❗️ [버그 수정]
-                // 1. (BUG) updateMachineCard(...) 호출 제거
-                // 2. (FIX) Scenario A 버튼(코스)을 수동으로 숨김
+                // ❗️ [수정] 3개의 API를 병렬(동시)로 처리하여 속도 개선
+                await Promise.all([
+                    api.registerPushToken(token),
+                    api.toggleNotifyMe(machineId, true),
+                    api.startCourse(machineId, courseName)
+                ]);
+                
+                console.log(`API: 코스 시작 및 알림 구독 성공 (병렬 처리)`);
+                
+                // ❗️ [수정] alert() 제거
+                // alert(`${courseName} 코스 알림이 등록되었습니다.`);
+
+                // (수동 UI 전환)
                 if (courseButtonsDiv) courseButtonsDiv.style.display = 'none';
                 if (startButton) startButton.style.display = 'none';
-
-                // 3. (FIX) Scenario B 버튼("알림 등록됨")을 수동으로 표시
                 const notifyMeButton = card.querySelector('.notify-me-during-wash-btn');
                 if (notifyMeButton) {
                     notifyMeButton.style.display = 'block';
                     notifyMeButton.textContent = '✅ 알림 등록됨';
                     notifyMeButton.disabled = true;
                 }
-                // ❗️ [버그 수정 끝]
 
             } catch (error) {
                 // ... (실패 시 롤백 로직 - 이전과 동일) ...
@@ -544,7 +547,7 @@ function addCourseButtonLogic() {
 }
 
 /**
- * "완료 알림 받기" 버튼 로직 (그대로)
+ * ❗️ [수정] "완료 알림 받기" 버튼 로직 (속도 개선)
  */
 function addNotifyMeDuringWashLogic() {
     document.querySelectorAll('.notify-me-during-wash-btn').forEach(button => {
@@ -564,13 +567,18 @@ function addNotifyMeDuringWashLogic() {
                     throw new Error('알림 권한이 거부되었습니다.'); 
                 }
                 
-                // ... (알림 구독) ...
                 const token = tokenOrStatus;
-                await api.registerPushToken(token); 
-                await api.toggleNotifyMe(machineId, true); // ❗️ [1] 구독
+
+                // ❗️ [수정] 2개의 API를 병렬(동시)로 처리
+                await Promise.all([
+                    api.registerPushToken(token),
+                    api.toggleNotifyMe(machineId, true)
+                ]);
 
                 btn.textContent = '✅ 알림 등록됨';
-                alert('완료 알림이 등록되었습니다.');
+                
+                // ❗️ [수정] alert() 제거
+                // alert('완료 알림이 등록되었습니다.');
 
             } catch (error) {
                 // ... (실패 시 롤백 로직 - 이전과 동일) ...
