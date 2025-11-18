@@ -1,5 +1,5 @@
 // js/main.js
-// ❗️ (타이머 숨김 로직 강화, 속도 개선, 새로고침 버그 수정)
+// ❗️ (timer_sync가 UI를 초기화하는 버그 수정)
 
 let connectionStatusElement;
 
@@ -16,6 +16,7 @@ async function main() {
     try {
         updateConnectionStatus('connecting'); 
         
+        // ❗️ [필수] /load API가 'elapsed_time_minutes'를 반환해야 함
         const [machines] = await Promise.all([
             api.getInitialMachines(),
             loadCongestionTip() 
@@ -92,21 +93,27 @@ function updateConnectionStatus(status) {
     }
 }
 
-// ❗️ [수정] handleSocketMessage (로직 단순화 - 이전과 동일)
+// ❗️ [수정] handleSocketMessage (timer_sync 버그 수정)
 async function handleSocketMessage(event) {
     try {
         const message = JSON.parse(event.data); 
 
-        // 1. 1분마다 타이머 동기화 (그대로 유지)
+        // 1. 1분마다 타이머 동기화
         if (message.type === 'timer_sync') {
             if (message.machines && Array.isArray(message.machines)) {
                 for (const machine of message.machines) {
-                    const isSubscribed = machine.isusing === 1;
+                    
+                    // ❗️ [버그 수정]
+                    // timer_sync 페이로드에는 'isusing' 값이 없습니다.
+                    // 'undefined'가 'false'로 변환되어 UI를 초기화시키는 버그가 있었습니다.
+                    // 'isSubscribed'를 'null'로 전달하여 버튼 상태를 건드리지 않도록 합니다.
+                    const isSubscribed = null;
+                    
                     updateMachineCard(
                         machine.machine_id, 
                         machine.status, 
                         machine.timer, // 남은 시간 (총 시간 계산용)
-                        isSubscribed,
+                        isSubscribed,  // ❗️ null로 변경
                         machine.elapsed_time_minutes // ❗️ 경과 시간
                     );
                 }
@@ -221,7 +228,8 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElap
             if (notifyMeButton) notifyMeButton.style.display = 'none';
         }
     } else {
-        // [3. isSubscribed가 null (room_status로 상태만 변경됨)]
+        // [3. isSubscribed가 null (room_status 또는 ❗️timer_sync)]
+        // (버튼 상태는 그대로 두고, 작동/대기 상태만 변경)
         if (shouldBeDisabled) {
             if (startButton) startButton.style.display = 'none'; 
             if (courseButtonsDiv) courseButtonsDiv.style.display = 'none'; 
