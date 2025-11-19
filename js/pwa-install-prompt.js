@@ -81,9 +81,9 @@ function checkAndShowPWAPrompt() {
         }
     }
     
-    // Android는 beforeinstallprompt가 발생했을 때만, iOS는 항상 표시
-    if (platform === 'android' && !deferredPrompt) {
-        console.log('Android: beforeinstallprompt 대기 중...');
+    // Android/Desktop은 beforeinstallprompt가 발생했을 때만 표시
+    if ((platform === 'android' || platform === 'desktop') && !deferredPrompt) {
+        console.log(`${platform}: beforeinstallprompt 대기 중...`);
         return;
     }
     
