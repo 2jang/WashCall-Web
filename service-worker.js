@@ -22,12 +22,6 @@ firebase.initializeApp(firebaseConfig);
 // 3. 메시징 인스턴스
 const messaging = firebase.messaging();
 
-// 3-1. PWA 설치 조건 충족을 위한 fetch 이벤트 리스너 (필수)
-self.addEventListener('fetch', (event) => {
-    // 기본적으로 네트워크 요청을 그대로 통과시킴 (Network Only 전략)
-    event.respondWith(fetch(event.request));
-});
-
 // 4. 백그라운드에서 푸시 처리 (data 페이로드 사용)
 messaging.onBackgroundMessage((payload) => {
     console.log('[service-worker.js] 백그라운드 메시지 수신:', payload);

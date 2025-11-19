@@ -11,14 +11,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function main() {
     console.log('WashCall WebApp 시작!');
-    
-    // Service Worker 등록 (PWA 설치 조건 필수)
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/service-worker.js')
-            .then((reg) => console.log('Service Worker Registered:', reg))
-            .catch((err) => console.log('Service Worker Registration Failed:', err));
-    }
-
     connectionStatusElement = document.getElementById('connection-status');
     
     try {
