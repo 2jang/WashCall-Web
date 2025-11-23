@@ -1,8 +1,8 @@
-/* css/style.css */
+/* css/style.css (전체 덮어쓰기) */
 
 /* --- 0. 색상 변수 정의 --- */
 :root {
-  /* 라이트 모드 (기본값) */
+  /* 라이트 모드 */
   --bg-color: #f4f7f6;
   --bg-secondary-color: #ffffff;
   --text-color: #333;
@@ -12,11 +12,11 @@
   --dryer-bg-color: #fffaf0; 
 
   /* 버튼 색상 */
-  --primary-color: #0064FF; /* 파란색 */
+  --primary-color: #0064FF; 
   --primary-hover-color: #0050CC;
-  --cta-color: #5cb85c; /* 녹색 */
+  --cta-color: #5cb85c; 
   --cta-hover-color: #4cae4c;
-  --cta-subscribed-color: #f0ad4e; /* 주황색 */
+  --cta-subscribed-color: #f0ad4e; 
   --cta-subscribed-hover: #ec971f;
   --btn-disabled-bg: #6c757d;
   
@@ -41,7 +41,6 @@ body.dark-mode {
   --card-shadow: 0 2px 4px rgba(0,0,0,0.2);
   --dryer-bg-color: #2c251a; 
 
-  /* 버튼 색상 (다크) */
   --primary-color: #0084ff; 
   --primary-hover-color: #0060C0;
   --cta-color: #5cb85c; 
@@ -50,7 +49,6 @@ body.dark-mode {
   --cta-subscribed-hover: #ec971f;
   --btn-disabled-bg: #444;
 
-  /* 상태별 색상 (다크) */
   --status-off-border: #5a5a5a;
   --status-off-text: #888;
   --status-washing-border: #0084ff;
@@ -62,7 +60,7 @@ body.dark-mode {
 }
 
 
-/* --- 1. 기본 설정 --- */
+/* --- 1. 기본 레이아웃 --- */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--bg-color);
@@ -112,6 +110,7 @@ body {
   text-decoration: none;
   color: var(--text-secondary-color);
   font-weight: 500;
+  transition: color 0.2s;
 }
 .navbar-toggle {
   display: none;
@@ -122,7 +121,7 @@ body {
   color: var(--text-color);
 }
 
-/* --- 3. 메인 헤더 --- */
+/* --- 3. 헤더 --- */
 .main-header {
   text-align: center;
   margin-bottom: 30px;
@@ -137,14 +136,14 @@ body {
   color: var(--text-secondary-color);
 }
 
-/* --- 4. 세탁기 리스트 컨테이너 --- */
+/* --- 4. 세탁기 리스트 --- */
 #machine-list-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
 }
 
-/* --- 5. 세탁기 카드 디자인 --- */
+/* --- 5. 세탁기 카드 --- */
 .machine-card {
   background-color: var(--bg-secondary-color);
   border: 1px solid var(--border-color);
@@ -194,41 +193,164 @@ body {
   100% { transform: translate(1px, -2px) rotate(-1deg); }
 }
 
-/* --- 9. 모바일 반응형 --- */
-@media (max-width: 768px) {
-  .navbar-toggle {
-    display: block;
-    z-index: 1001;
-  }
-  .navbar-nav {
-    position: fixed; 
-    top: 0;
-    right: 0;
-    width: 250px;
-    height: 100vh;
-    z-index: 1000;
-    display: flex; 
-    transform: translateX(100%);
-    transition: transform 0.3s ease-in-out;
+/* --- 9. 로그인 / 회원가입 폼 --- */
+.auth-container {
+  max-width: 450px;
+  margin: 50px auto;
+  padding: 30px;
+  background-color: var(--bg-secondary-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+}
+.auth-form h2 {
+  text-align: center;
+  color: var(--text-color);
+  margin-bottom: 25px;
+}
+.form-group {
+  margin-bottom: 20px;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--text-secondary-color);
+}
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box; 
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  border-radius: 5px;
+  font-size: 1rem;
+}
+.auth-button {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.auth-button:hover {
+  background-color: var(--primary-hover-color);
+}
+.auth-toggle {
+  text-align: center;
+  margin-top: 20px;
+  color: var(--text-secondary-color);
+}
+.auth-toggle a {
+  color: var(--primary-color);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* --- 10. ❗️ [복구] 혼잡도 요일 버튼 (정렬 수정됨) --- */
+.day-selector {
+  display: flex;
+  justify-content: center; /* 중앙 정렬 */
+  gap: 8px; /* 간격 */
+  margin-bottom: 20px;
+  flex-wrap: nowrap; /* 줄바꿈 방지 */
+}
+.day-btn {
+  flex: 1; /* 균등 너비 */
+  padding: 10px 0;
+  font-size: 1rem;
+  text-align: center;
+  border: 1px solid var(--primary-color);
+  background-color: var(--bg-secondary-color);
+  color: var(--primary-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  max-width: 60px; /* 너무 커지지 않게 제한 */
+}
+.day-btn:hover {
+  background-color: var(--bg-color);
+}
+.day-btn.active {
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* --- 11. ❗️ [복구] 서베이 폼 --- */
+.survey-form {
+  background-color: var(--bg-secondary-color);
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+}
+.radio-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 8px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+.radio-group input[type="radio"] { display: none; }
+.radio-group label {
+    display: flex; align-items: center; justify-content: center;
+    padding: 12px 10px; font-weight: 500; font-size: 0.95rem;
+    color: var(--text-secondary-color);
     background-color: var(--bg-secondary-color);
-    flex-direction: column;
-    margin: 0;
-    padding: 60px 0 0 0; 
-    box-shadow: -2px 0 8px rgba(0,0,0,0.15);
-  }
-  .navbar-nav.active {
-    transform: translateX(0%);
-  }
-  .navbar-nav li {
-    margin-left: 0;
-    width: 100%;
-  }
-  .navbar-nav a {
-    display: block;
-    padding: 15px 25px;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-color);
-  }
+    border-left: 1px solid var(--border-color);
+    cursor: pointer; transition: all 0.2s;
+    text-align: center; white-space: nowrap;
+}
+.radio-group label:first-of-type { border-left: none; }
+.radio-group label:hover { background-color: var(--bg-color); }
+.radio-group input[type="radio"]:checked + label {
+    background-color: var(--primary-color);
+    color: white; font-weight: 600;
+}
+.form-group textarea, .form-group select {
+  width: 100%; padding: 12px; box-sizing: border-box; 
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-color); color: var(--text-color);
+  border-radius: 5px; font-size: 1rem; resize: vertical;
+}
+.submit-btn {
+    padding: 12px 20px; font-size: 1rem; font-weight: 600;
+    background-color: var(--primary-color); color: white;
+    border: none; border-radius: 5px; cursor: pointer;
+    transition: background-color 0.2s;
+}
+.submit-btn:hover { background-color: var(--primary-hover-color); }
+
+/* --- 12. ❗️ [복구] 푸시 컨테이너 --- */
+.push-container {
+  background-color: var(--bg-secondary-color);
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* --- 13. ❗️ [복구] 에러 메시지 --- */
+.error-message {
+  color: #D8000C;
+  background-color: #FFD2D2;
+  border: 1px solid #D8000C;
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 15px;
+  text-align: center;
+  font-weight: 500;
+  display: none;
 }
 
 /* --- 15. 서버 연결 상태 --- */
@@ -252,7 +374,7 @@ body {
   border: 1px solid #f5c6cb;
 }
 
-/* --- 16. 혼잡도 팁 --- */
+/* --- 16. 팁 컨테이너 --- */
 .tip-container {
     background-color: rgba(0, 123, 255, 0.1);
     border: 1px solid rgba(0, 123, 255, 0.2);
@@ -300,10 +422,6 @@ body {
     background-color: var(--btn-disabled-bg);
     cursor: not-allowed;
 }
-.push-container {
-    text-align: center;
-    margin-bottom: 20px;
-}
 
 /* --- 18. 개별 카드 알림 버튼 --- */
 .notify-start-btn,
@@ -331,7 +449,7 @@ body {
     opacity: 0.8;
 }
 
-/* --- 21. 건조기 --- */
+/* --- 21. 건조기 카드 --- */
 .machine-type-dryer {
     background-color: var(--dryer-bg-color);
     border-color: var(--border-color);
@@ -368,7 +486,7 @@ body {
     color: var(--text-color);
 }
 
-/* --- 25. 다크 모드 토글 --- */
+/* --- 25. 다크 모드 토글 스위치 --- */
 .theme-switch-wrapper {
   display: flex;
   align-items: center;
@@ -412,7 +530,7 @@ input:checked + .theme-slider:before {
   transform: translateX(20px);
 }
 
-/* --- 26. ❗️ [신규] 세탁 코스 선택 모달 --- */
+/* --- 26. 모달 UI --- */
 .modal {
     display: none;
     position: fixed;
@@ -495,3 +613,35 @@ input:checked + .theme-slider:before {
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* --- 모바일 반응형 --- */
+@media (max-width: 768px) {
+  .navbar-toggle { display: block; }
+  .navbar-nav {
+    position: fixed; 
+    top: 0; right: 0; width: 250px; height: 100vh;
+    display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform 0.3s;
+    background-color: var(--bg-secondary-color);
+    padding-top: 60px;
+    box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+  }
+  .navbar-nav.active { transform: translateX(0%); }
+  .navbar-nav li { margin: 0; width: 100%; }
+  .navbar-nav a { display: block; padding: 15px 25px; border-bottom: 1px solid var(--border-color); }
+  
+  .theme-switch-wrapper {
+      padding: 15px 25px;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+  }
+  
+  /* 요일 버튼 모바일 조정 */
+  .day-selector {
+    gap: 5px; 
+  }
+  .day-btn {
+    font-size: 0.9rem;
+    padding: 8px 0;
+  }
+}
