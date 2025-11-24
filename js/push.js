@@ -1,7 +1,6 @@
 // js/push.js
-// ❗️ (빈자리 알림 해제 시 기존 구독 복구 + UI 완벽 복원)
+// ❗️ (불필요한 opacity 제거, disabled만 사용하여 회색 처리)
 
-// 1. Firebase 설정
 const firebaseConfig = {
     apiKey: "AIzaSyD0MBr9do9Hl3AJsNv0yZJRupDT1l-8dVE",
     authDomain: "washcallproject.firebaseapp.com",
@@ -12,7 +11,6 @@ const firebaseConfig = {
     measurementId: "G-K4FHGY7MZT"
 };
 
-// Firebase 초기화
 let messaging = null;
 try {
     firebase.initializeApp(firebaseConfig);
@@ -25,7 +23,7 @@ try {
 
 let masterPushButton; 
 const STORAGE_KEY = 'washcallRoomSubState'; 
-const RESTORE_KEY = 'washcallRestoreSubs'; // ❗️ 복구용 저장 키
+const RESTORE_KEY = 'washcallRestoreSubs';
 let isRoomSubscribed = false; 
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -51,11 +49,9 @@ async function setupMasterPushButton() {
       masterPushButton.textContent = 'SW 파일 없음';
   }
 
-  // 초기 상태 로드
   isRoomSubscribed = (localStorage.getItem(STORAGE_KEY) === 'true');
   updateMasterButtonText(isRoomSubscribed);
   
-  // 페이지 로드 시 이미 켜져있다면 카드 잠금 실행
   if (isRoomSubscribed) {
       setTimeout(() => toggleAllCardButtons(true), 500);
   }
@@ -82,7 +78,6 @@ async function onMasterSubscribeToggle() {
 
     try {
         if (targetState === true) {
-            // [ON 켜기]
             masterPushButton.textContent = '권한 확인 중...';
             
             const tokenOrStatus = await requestPermissionAndGetToken();
@@ -92,31 +87,22 @@ async function onMasterSubscribeToggle() {
             const token = tokenOrStatus;
             await api.registerPushToken(token);
             
-            // ❗️ 1. 끄기 전에 현재 구독 정보 저장 (메모)
             saveCurrentSubscriptions();
-
-            // 2. 개별 알림 모두 끄기 (중복 방지)
             await turnOffAllIndividualToggles();
             
-            // 3. 전체 구독 API 호출
             const allToggles = document.querySelectorAll('.notify-me-toggle'); 
             await subscribeAllMachinesAPI(allToggles, true); 
             
-            // 4. 카드 버튼들 잠그기
             toggleAllCardButtons(true);
 
             alert(`'빈자리 알림'이 켜졌습니다.\n세탁기가 비면 푸시 알림을 드립니다.`);
 
         } else {
-            // [OFF 끄기]
             masterPushButton.textContent = '해제 중...';
             const allToggles = document.querySelectorAll('.notify-me-toggle');
             await subscribeAllMachinesAPI(allToggles, false); 
             
-            // ❗️ 5. 기존 구독 정보 복구 (Restore)
             await restoreSubscriptions();
-
-            // 6. 카드 버튼들 풀기 (복구된 상태 반영)
             toggleAllCardButtons(false);
             
             alert('빈자리 알림이 꺼졌습니다.\n(기존 알림 설정이 복구되었습니다)');
@@ -134,7 +120,6 @@ async function onMasterSubscribeToggle() {
     masterPushButton.disabled = false; 
 }
 
-// ❗️ [신규] 현재 구독 중인 카드 ID 저장
 function saveCurrentSubscriptions() {
     const subscribedIds = [];
     document.querySelectorAll('.machine-card').forEach(card => {
@@ -144,34 +129,27 @@ function saveCurrentSubscriptions() {
         }
     });
     localStorage.setItem(RESTORE_KEY, JSON.stringify(subscribedIds));
-    console.log("저장된 구독 목록:", subscribedIds);
 }
 
-// ❗️ [신규] 저장된 구독 정보로 재구독 및 상태 복구
 async function restoreSubscriptions() {
     const savedData = localStorage.getItem(RESTORE_KEY);
     if (!savedData) return;
 
     const ids = JSON.parse(savedData);
     if (!Array.isArray(ids) || ids.length === 0) return;
-
-    console.log("구독 복구 시작:", ids);
     
-    // API 재호출
     const tasks = ids.map(id => api.toggleNotifyMe(id, true));
     await Promise.all(tasks);
 
-    // UI 상태(꼬리표) 복구
     ids.forEach(id => {
         const card = document.getElementById(`machine-${id}`);
         if (card) card.dataset.isSubscribed = 'true';
     });
 
-    // 사용 후 삭제
     localStorage.removeItem(RESTORE_KEY);
 }
 
-// ❗️ [핵심 수정] 카드 버튼 잠금/해제 (복구 로직 포함)
+// ❗️ [수정] opacity 설정 제거 -> CSS disabled 스타일(회색)만 따름
 function toggleAllCardButtons(shouldDisable) {
     const allCards = document.querySelectorAll('.machine-card');
 
@@ -180,44 +158,39 @@ function toggleAllCardButtons(shouldDisable) {
         const notifyBtn = card.querySelector('.notify-me-during-wash-btn');
         const isSubscribed = card.dataset.isSubscribed === 'true';
         
-        // 상태 텍스트로 현재 기기 상태 추측 (main.js 연동 없이 UI 복구)
         const statusText = card.querySelector('.status-display strong')?.textContent || "";
-        const isRunning = statusText.includes("중"); // 세탁 중, 탈수 중...
-        const isWaiting = statusText.includes("대기") || statusText.includes("완료");
+        const isRunning = statusText.includes("중"); 
+        const isWaiting = statusText.includes("대기") || statusText.includes("완료") || statusText.includes("OFF");
 
         if (shouldDisable) {
-            // 🔴 [잠금 모드]
+            // 🔴 [잠금]
             if (startBtn) {
-                startBtn.style.display = 'block'; // 버튼을 보여주되
-                startBtn.disabled = true;         // 비활성화
+                startBtn.style.display = 'block';
+                startBtn.disabled = true; // CSS가 회색으로 만듦
                 startBtn.textContent = "빈자리 알림 사용 중";
-                startBtn.style.opacity = "0.5";
+                startBtn.style.opacity = ""; // 기존 투명도 제거
             }
-            if (notifyBtn) notifyBtn.style.display = 'none'; // 알림 버튼은 숨김
+            if (notifyBtn) notifyBtn.style.display = 'none';
             
         } else {
-            // 🟢 [해제 모드 - 원상복구]
+            // 🟢 [해제]
             if (isSubscribed) {
-                // (1) 구독 중이었던 카드 -> "✅ 알림 등록됨"
                 if (startBtn) startBtn.style.display = 'none';
                 if (notifyBtn) {
                     notifyBtn.style.display = 'block';
-                    notifyBtn.textContent = '✅ 알림 등록됨';
-                    notifyBtn.disabled = true;
+                    notifyBtn.textContent = '✅ 알림 등록됨 (해제)';
+                    notifyBtn.disabled = false;
                 }
             } else {
-                // (2) 구독 안 했던 카드 -> 원래 상태로
                 if (isWaiting) {
-                    // 대기 중 -> 세탁 시작 버튼
                     if (startBtn) {
                         startBtn.style.display = 'block';
                         startBtn.disabled = false;
                         startBtn.textContent = "🔔 세탁 시작";
-                        startBtn.style.opacity = "1";
+                        startBtn.style.opacity = "";
                     }
                     if (notifyBtn) notifyBtn.style.display = 'none';
                 } else {
-                    // 작동 중 -> 알림 받기 버튼
                     if (startBtn) startBtn.style.display = 'none';
                     if (notifyBtn) {
                         notifyBtn.style.display = 'block';
@@ -231,15 +204,11 @@ function toggleAllCardButtons(shouldDisable) {
 }
 
 async function turnOffAllIndividualToggles() {
-    // UI상으로는 이미 꼬리표(dataset)에 저장했으므로, 여기선 API만 끄면 됨
     const subscribedCards = document.querySelectorAll('.machine-card[data-is-subscribed="true"]');
     const tasks = [];
     subscribedCards.forEach(card => {
         const machineId = parseInt(card.id.replace('machine-', ''), 10);
-        if (machineId) {
-            tasks.push(api.toggleNotifyMe(machineId, false));
-        }
-        // ❗️ 주의: 여기서 dataset을 지우면 안됨! (복구해야 하니까)
+        if (machineId) tasks.push(api.toggleNotifyMe(machineId, false));
     });
     await Promise.all(tasks);
 }
@@ -256,7 +225,6 @@ async function subscribeAllMachinesAPI(toggles, shouldBeOn) {
 
 function updateMasterButtonText(isOn) {
     if (!masterPushButton) return; 
-    
     if (isOn) {
         masterPushButton.textContent = "🔔 빈자리 알림 사용 중"; 
         masterPushButton.classList.add('subscribed'); 
