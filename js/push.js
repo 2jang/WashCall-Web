@@ -1,5 +1,5 @@
 // js/push.js
-// ❗️ (UI 제어권 main.js로 이양한 버전)
+// ❗️ (빈자리 알림 자동 해제 기능 포함 최종본)
 
 const firebaseConfig = {
     apiKey: "AIzaSyD0MBr9do9Hl3AJsNv0yZJRupDT1l-8dVE",
@@ -53,7 +53,6 @@ async function setupMasterPushButton() {
   updateMasterButtonText(isRoomSubscribed);
   
   if (isRoomSubscribed) {
-      // ✅ 수정: true 인자 제거 (updateButtonUI에서 알아서 판단함)
       setTimeout(() => toggleAllCardButtons(), 500);
   }
 
@@ -91,10 +90,9 @@ async function onMasterSubscribeToggle() {
             saveCurrentSubscriptions();
             await turnOffAllIndividualToggles();
             
-            const allToggles = document.querySelectorAll('.notify-me-toggle'); 
-            await subscribeAllMachinesAPI(allToggles, true); 
+            await subscribeAllMachinesAPI(true); 
             
-            // ✅ 수정: localStorage 값을 먼저 설정해야 updateButtonUI가 이를 인지함
+            // 상태 저장 먼저
             isRoomSubscribed = targetState;
             localStorage.setItem(STORAGE_KEY, isRoomSubscribed);
             
@@ -104,12 +102,10 @@ async function onMasterSubscribeToggle() {
 
         } else {
             masterPushButton.textContent = '해제 중...';
-            const allToggles = document.querySelectorAll('.notify-me-toggle');
-            await subscribeAllMachinesAPI(allToggles, false); 
             
+            await subscribeAllMachinesAPI(false); 
             await restoreSubscriptions();
             
-            // ✅ 수정: localStorage 값을 먼저 업데이트
             isRoomSubscribed = targetState;
             localStorage.setItem(STORAGE_KEY, isRoomSubscribed);
             
@@ -120,13 +116,43 @@ async function onMasterSubscribeToggle() {
 
     } catch (error) {
         alert(`처리 실패: ${error.message}`);
-        // 에러 시 원복
         isRoomSubscribed = (localStorage.getItem(STORAGE_KEY) === 'true'); 
     }
     
     updateMasterButtonText(isRoomSubscribed);
     masterPushButton.disabled = false; 
 }
+
+/**
+ * 🚀 [신규] 알림 수신 시 자동으로 빈자리 알림을 해제하는 함수
+ * main.js에서 세탁 완료 알림을 받으면 이 함수를 호출합니다.
+ */
+window.handleAutoUnsubscribe = async function(machineName) {
+    const isSubscribed = localStorage.getItem(STORAGE_KEY) === 'true';
+    if (!isSubscribed) return; // 이미 꺼져있으면 패스
+
+    console.log(`[Push] ${machineName} 완료 감지 -> 빈자리 알림 자동 해제 시작...`);
+
+    // 1. 상태 끄기 (로컬 스토리지 및 변수)
+    isRoomSubscribed = false;
+    localStorage.setItem(STORAGE_KEY, 'false');
+
+    // 2. UI 즉시 변경 (사용자가 바로 알 수 있게)
+    updateMasterButtonText(false);
+    toggleAllCardButtons(); // 개별 버튼들의 잠금(회색)을 풂
+
+    // 3. 백그라운드에서 서버에 구독 해제 요청 (나머지 기기들 알림 취소)
+    try {
+        // 모든 기기 구독 해제
+        await subscribeAllMachinesAPI(false);
+        // 기존 구독 상태 복구 (있다면)
+        await restoreSubscriptions();
+    } catch (e) {
+        console.warn("[Push] 자동 해제 중 API 오류 (무시됨):", e);
+    }
+    
+    // (선택) 필요하다면 여기서 alert나 토스트 메시지를 띄울 수 있습니다.
+};
 
 function saveCurrentSubscriptions() {
     const subscribedIds = [];
@@ -157,15 +183,11 @@ async function restoreSubscriptions() {
     localStorage.removeItem(RESTORE_KEY);
 }
 
-// ❗️ [핵심 수정] UI 제어를 main.js의 updateButtonUI에 위임
+// UI 제어를 main.js의 updateButtonUI에 위임
 function toggleAllCardButtons() {
     const allCards = document.querySelectorAll('.machine-card');
-
     allCards.forEach(card => {
-        // main.js에서 저장해둔 data-status를 사용
         const currentStatus = card.dataset.status || 'OFF';
-        
-        // main.js가 로드되어 있다면 통합 UI 함수 호출
         if (typeof window.updateButtonUI === 'function') {
             window.updateButtonUI(card, currentStatus);
         }
@@ -182,13 +204,18 @@ async function turnOffAllIndividualToggles() {
     await Promise.all(tasks);
 }
 
-async function subscribeAllMachinesAPI(toggles, shouldBeOn) {
+async function subscribeAllMachinesAPI(shouldBeOn) {
     const tasks = [];
+    // 세탁기만 대상으로 함
     const washerCards = document.querySelectorAll('.machine-type-washer');
+    
     washerCards.forEach(card => {
         const machineId = parseInt(card.id.replace('machine-', ''), 10);
-        if (machineId) tasks.push(api.toggleNotifyMe(machineId, shouldBeOn));
+        if (machineId) {
+            tasks.push(api.toggleNotifyMe(machineId, shouldBeOn));
+        }
     });
+    
     await Promise.all(tasks);
 }
 

@@ -1,5 +1,5 @@
 // js/main.js
-// ❗️ (로그 추가 및 엄격한 상태 보존 로직 적용)
+// ❗️ (notify 수신 처리 및 자동 해제 트리거 포함 최종본)
 
 let connectionStatusElement;
 let currentSelectedMachineId = null; 
@@ -96,24 +96,44 @@ function updateConnectionStatus(status) {
 
 async function handleSocketMessage(event) {
     try {
-        const message = JSON.parse(event.data);
+        const message = JSON.parse(event.data); 
 
-        // 타이머 동기화 메시지 처리 (기존 코드)
+        // 타이머 동기화 메시지 (구독 정보 없음 -> null)
         if (message.type === 'timer_sync') {
-            // ... (기존 로직 유지)
-            return;
+            if (message.machines && Array.isArray(message.machines)) {
+                for (const machine of message.machines) {
+                    const isSubscribed = null; // 서버 정보 없음
+                    updateMachineCard(
+                        machine.machine_id, 
+                        machine.status, 
+                        machine.timer, 
+                        isSubscribed, 
+                        machine.elapsed_time_minutes
+                    );
+                }
+            }
+            return; 
         }
 
         const machineId = message.machine_id;
         const newStatus = message.status;
-        const newTimer = (message.timer !== undefined) ? message.timer : null;
-        const isSubscribed = null; 
+        const newTimer = (message.timer !== undefined) ? message.timer : null; 
+        const isSubscribed = null; // 개별 알림도 구독 정보는 null
         const newElapsedMinutes = message.elapsed_time_minutes;
 
-        // 🚀 [수정] 'notify' 타입도 함께 처리하도록 조건 추가
+        // 🚀 [수정] 'room_status' 뿐만 아니라 'notify' 메시지도 처리
         if (message.type === 'room_status' || message.type === 'notify') { 
-            console.log(`[WS] 상태 업데이트 수신 (${message.type}): Machine ${machineId} -> ${newStatus}`);
+            
             updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElapsedMinutes); 
+            
+            // 🚀 [신규] 완료 알림(FINISHED) 수신 시, 빈자리 알림 모드 자동 해제
+            if (message.type === 'notify' && newStatus === 'FINISHED') {
+                // push.js에 정의된 자동 해제 함수 호출
+                if (typeof window.handleAutoUnsubscribe === 'function') {
+                    const machineName = `세탁기 ${machineId}번`;
+                    window.handleAutoUnsubscribe(machineName);
+                }
+            }
         }
         
     } catch (error) {
@@ -121,16 +141,15 @@ async function handleSocketMessage(event) {
     }
 }
 
-// 🔄 카드 업데이트 (엄격한 상태 보존 로직)
+// 🔄 카드 업데이트
 function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElapsedMinutes) {
     const card = document.getElementById(`machine-${machineId}`);
     if (!card) return; 
 
-    // 1. 상태 데이터 갱신
+    // 1. 상태 데이터 갱신 (중요)
     card.dataset.status = newStatus;
-    const machineType = card.dataset.machineType || 'washer';
     
-    // 클래스 초기화 및 재설정
+    const machineType = card.dataset.machineType || 'washer';
     card.className = 'machine-card'; 
     card.classList.add(machineType === 'dryer' ? 'machine-type-dryer' : 'machine-type-washer'); 
     card.classList.add(`status-${newStatus ? newStatus.toLowerCase() : 'off'}`); 
@@ -138,7 +157,7 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElap
     const statusStrong = card.querySelector('.status-display strong');
     if (statusStrong) statusStrong.textContent = translateStatus(newStatus, machineType);
 
-    // 2. 타이머 업데이트
+    // 2. 타이머 UI 업데이트
     const timerDiv = card.querySelector('.timer-display');
     const timerTotalSpan = card.querySelector(`#timer-total-${machineId}`);
     const timerElapsedSpan = card.querySelector(`#timer-elapsed-${machineId}`);
@@ -161,18 +180,13 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElap
         timerDiv.style.display = 'none';
     }
 
-    // ❗️ [핵심 수정] 구독 정보가 '명확하게(true/false)' 올 때만 변경
-    // null이나 undefined가 오면 기존 dataset을 절대 건드리지 않음
+    // ❗️ [핵심] 구독 정보가 '명확하게(true/false)' 올 때만 dataset 변경
     if (isSubscribed === true) {
-        console.log(`[Machine ${machineId}] 구독 설정됨 (true)`);
         card.dataset.isSubscribed = 'true';
     } else if (isSubscribed === false) {
-        console.log(`[Machine ${machineId}] 구독 해제됨 (false)`);
         delete card.dataset.isSubscribed;
-    } else {
-        // isSubscribed가 null일 경우: 기존 상태 유지 (로그로 확인 가능)
-        // console.log(`[Machine ${machineId}] 구독 정보 없음(null) -> 기존 상태 유지: ${card.dataset.isSubscribed}`);
-    }
+    } 
+    // null이나 undefined면 기존 상태를 그대로 유지함
     
     // 3. 통합 UI 함수 호출
     if (typeof window.updateButtonUI === 'function') {
@@ -198,12 +212,12 @@ function renderMachines(machines) {
         // 상태 데이터 저장
         machineDiv.dataset.status = machine.status;
 
-        // 초기 구독 상태 설정
+        // 초기 구독 상태
         if (machine.isusing === 1) {
             machineDiv.dataset.isSubscribed = 'true';
         }
 
-        // 타이머 초기값 계산
+        // 타이머 초기값
         const isOperating = (machine.status === 'WASHING' || machine.status === 'SPINNING' || machine.status === 'DRYING');
         const timerRemaining = machine.timer; 
         const elapsedMinutes = machine.elapsed_time_minutes;
@@ -240,7 +254,7 @@ function renderMachines(machines) {
         `;
         container.appendChild(machineDiv);
 
-        // UI 상태 결정
+        // UI 초기화
         window.updateButtonUI(machineDiv, machine.status);
     });
 
@@ -316,7 +330,7 @@ window.updateButtonUI = function(card, status) {
     }
 }
 
-// ... (이벤트 핸들러 등 나머지 코드는 기존과 동일하게 유지) ...
+// ... (기존 이벤트 핸들러들은 변경 없음) ...
 function setupModalEvents() {
     const modal = document.getElementById('course-modal');
     const closeBtn = document.querySelector('.close-modal');
