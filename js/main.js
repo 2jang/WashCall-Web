@@ -1,5 +1,5 @@
 // js/main.js
-// ❗️ (timer_sync 수신 시 빈자리 알림 상태 유지 버그 수정)
+// ❗️ (빈자리 알림 시 작동 중인 기기 버튼 겹침 오류 수정)
 
 let connectionStatusElement;
 let currentSelectedMachineId = null; 
@@ -98,11 +98,9 @@ async function handleSocketMessage(event) {
     try {
         const message = JSON.parse(event.data); 
 
-        // 1. 1분마다 타이머 동기화
         if (message.type === 'timer_sync') {
             if (message.machines && Array.isArray(message.machines)) {
                 for (const machine of message.machines) {
-                    // timer_sync는 구독 정보가 없으므로 null 전달 (기존 상태 유지용)
                     const isSubscribed = null;
                     updateMachineCard(
                         machine.machine_id, 
@@ -116,7 +114,6 @@ async function handleSocketMessage(event) {
             return; 
         }
 
-        // 2. 개별 상태 변경
         const machineId = message.machine_id;
         const newStatus = message.status;
         const newTimer = (message.timer !== undefined) ? message.timer : null; 
@@ -132,7 +129,6 @@ async function handleSocketMessage(event) {
     }
 }
 
-// ❗️ [핵심] 이 함수가 주기적으로 호출될 때 빈자리 알림을 체크해야 합니다.
 function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElapsedMinutes) {
     const card = document.getElementById(`machine-${machineId}`);
     if (!card) return; 
@@ -165,15 +161,14 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElap
         timerDiv.style.display = 'none';
     }
 
-    // ❗️ [여기!] 빈자리 알림이 켜져있는지 확인
+    // --- 버튼 표시 로직 ---
     const isRoomSubscribed = localStorage.getItem('washcallRoomSubState') === 'true';
-
-    const shouldBeDisabled = isOperating;
+    const shouldBeDisabled = isOperating; // 작동 중이면 true
+    
     const startButton = card.querySelector('.notify-start-btn');
     const notifyMeButton = card.querySelector('.notify-me-during-wash-btn');
     const courseButtonsDiv = card.querySelector('.course-buttons');
 
-    // 개별 구독 상태 동기화
     let finalIsSubscribed = false;
     if (isSubscribed === true) {
         finalIsSubscribed = true;
@@ -185,32 +180,41 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElap
         if (card.dataset.isSubscribed === 'true') finalIsSubscribed = true;
     }
 
-    // --- 버튼 표시 로직 ---
-    
-    // 1. 빈자리 알림이 켜져있다면 -> 무조건 잠금 상태 유지
+    // ❗️ [핵심 수정] 빈자리 알림 켜졌을 때 + 기기 상태 고려
     if (isRoomSubscribed) {
-        if (startButton) {
-            startButton.style.display = 'block';
-            startButton.disabled = true;
-            startButton.textContent = "빈자리 알림 사용 중"; 
-            startButton.style.opacity = "0.5";
-        }
         if (courseButtonsDiv) courseButtonsDiv.style.display = 'none';
-        
-        if (notifyMeButton) {
-            if (finalIsSubscribed) {
-                 // 예외: 사용자가 이미 개별 알림을 등록한 경우엔 그것만 보여줌
-                 notifyMeButton.style.display = 'block';
-                 notifyMeButton.textContent = '✅ 알림 등록됨';
-                 notifyMeButton.disabled = true;
-            } else {
-                 notifyMeButton.style.display = 'none';
+
+        if (shouldBeDisabled) {
+            // 1. 작동 중 (세탁/탈수)
+            // -> 시작 버튼 숨김, 알림 버튼 보여주되 비활성(혹은 이미 구독중이면 체크)
+            if (startButton) startButton.style.display = 'none';
+            
+            if (notifyMeButton) {
+                notifyMeButton.style.display = 'block';
+                if (finalIsSubscribed) {
+                    notifyMeButton.textContent = '✅ 알림 등록됨';
+                } else {
+                    notifyMeButton.textContent = "빈자리 알림 사용 중";
+                }
+                notifyMeButton.disabled = true;
+                notifyMeButton.style.opacity = "0.5";
+            }
+        } else {
+            // 2. 대기 중
+            // -> 시작 버튼 보여주되 비활성, 알림 버튼 숨김
+            if (notifyMeButton) notifyMeButton.style.display = 'none';
+            
+            if (startButton) {
+                startButton.style.display = 'block';
+                startButton.disabled = true;
+                startButton.textContent = "빈자리 알림 사용 중";
+                startButton.style.opacity = "0.5";
             }
         }
-        return; // ❗️ 여기서 함수 종료 (아래 로직 실행 안 함)
+        return; // 종료
     }
 
-    // 2. 빈자리 알림 꺼짐 -> 정상 로직
+    // (빈자리 알림 꺼짐 -> 정상 로직)
     if (finalIsSubscribed) {
         if (startButton) startButton.style.display = 'none'; 
         if (courseButtonsDiv) courseButtonsDiv.style.display = 'none'; 
@@ -218,6 +222,7 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElap
             notifyMeButton.style.display = 'block'; 
             notifyMeButton.textContent = '✅ 알림 등록됨';
             notifyMeButton.disabled = true;
+            notifyMeButton.style.opacity = "1";
         }
     } else {
         if (shouldBeDisabled) {
@@ -226,6 +231,7 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElap
                 notifyMeButton.style.display = 'block';
                 notifyMeButton.textContent = '🔔 완료 알림 받기';
                 notifyMeButton.disabled = false;
+                notifyMeButton.style.opacity = "1";
              }
         } else {
             if (notifyMeButton) notifyMeButton.style.display = 'none';
@@ -238,7 +244,7 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElap
                  if (startButton) {
                      startButton.style.display = 'block';
                      startButton.disabled = false;
-                     startButton.textContent = "🔔 세탁 시작"; // 텍스트 복구
+                     startButton.textContent = "🔔 세탁 시작";
                      startButton.style.opacity = "1";
                  }
                  if (courseButtonsDiv) courseButtonsDiv.style.display = 'none';
@@ -248,12 +254,12 @@ function updateMachineCard(machineId, newStatus, newTimer, isSubscribed, newElap
 }
 
 
+// ❗️ [수정] renderMachines (빈자리 알림 체크 및 상태 고려)
 function renderMachines(machines) {
     const container = document.getElementById('machine-list-container');
     if (!container) return;
     container.innerHTML = '';
 
-    // 초기 렌더링 시에도 빈자리 알림 체크
     const isRoomSubscribed = localStorage.getItem('washcallRoomSubState') === 'true';
 
     machines.forEach(machine => {
@@ -277,24 +283,48 @@ function renderMachines(machines) {
         const displayTotalTime = shouldShowTimer ? `약 ${totalTime}분` : '';
         const displayElapsedTime = shouldShowTimer ? `${elapsedMinutes}분 진행` : '';
         
+        // 버튼 상태 초기값
         let showStartButton = false; 
         let showScenario_B = false;
         let startBtnDisabled = false;
         let startBtnText = "🔔 세탁 시작";
         let startBtnOpacity = "1";
+        
+        let notifyBtnDisabled = false;
+        let notifyBtnText = "🔔 완료 알림 받기";
+        let notifyBtnOpacity = "1";
 
         if (isRoomSubscribed) {
-            // 🔴 빈자리 알림 켜짐 -> 잠금 상태로 렌더링
-            showStartButton = true;
-            startBtnDisabled = true;
-            startBtnText = "빈자리 알림 사용 중";
-            startBtnOpacity = "0.5";
-            showScenario_B = false; 
+            // 🔴 빈자리 알림 켜짐
+            if (isOperating) {
+                // 작동 중 -> 알림 버튼(B) 보여주되 비활성
+                showStartButton = false;
+                showScenario_B = true;
+                notifyBtnDisabled = true;
+                notifyBtnText = "빈자리 알림 사용 중";
+                notifyBtnOpacity = "0.5";
+                
+                // 만약 이미 구독중이면
+                if (machine.isusing === 1) {
+                    notifyBtnText = "✅ 알림 등록됨";
+                }
+            } else {
+                // 대기 중 -> 시작 버튼(A) 보여주되 비활성
+                showStartButton = true;
+                showScenario_B = false;
+                startBtnDisabled = true;
+                startBtnText = "빈자리 알림 사용 중";
+                startBtnOpacity = "0.5";
+            }
         } else {
+            // 정상 상태
             const isDisabled = isOperating;
             const isSubscribed = (machine.isusing === 1);
             if (isSubscribed) {
-                showStartButton = false; showScenario_B = true; 
+                showStartButton = false; 
+                showScenario_B = true; 
+                notifyBtnDisabled = true;
+                notifyBtnText = "✅ 알림 등록됨";
             } else {
                 if (isDisabled) {
                     showStartButton = false; showScenario_B = true;
@@ -304,8 +334,9 @@ function renderMachines(machines) {
             }
         }
         
-        const scenarioB_DisabledAttr = (machine.isusing === 1) ? 'disabled' : '';
-        const scenarioB_Text = (machine.isusing === 1) ? '✅ 알림 등록됨' : '🔔 완료 알림 받기';
+        const scenarioB_DisabledAttr = notifyBtnDisabled ? 'disabled' : '';
+        const scenarioB_Text = notifyBtnText;
+
         const machineDisplayName = machine.machine_name || `기기 ${machine.machine_id}`;
         
         machineDiv.innerHTML = `
@@ -328,7 +359,9 @@ function renderMachines(machines) {
                 ${startBtnText}
             </button>
             <button class="notify-me-during-wash-btn" data-machine-id="${machine.machine_id}" 
-                ${showScenario_B ? '' : 'style="display: none;"'} ${scenarioB_DisabledAttr}>
+                ${showScenario_B ? '' : 'style="display: none;"'} 
+                ${scenarioB_DisabledAttr}
+                style="opacity: ${notifyBtnOpacity};">
                 ${scenarioB_Text}
             </button>
         `;
@@ -339,7 +372,7 @@ function renderMachines(machines) {
     addNotifyMeDuringWashLogic(); 
 }
 
-// ... (setupModalEvents, handleCourseSelection, handleDryerStart 등 기존 함수 동일) ...
+// ... (나머지 함수들은 기존과 동일) ...
 function setupModalEvents() {
     const modal = document.getElementById('course-modal');
     const closeBtn = document.querySelector('.close-modal');
